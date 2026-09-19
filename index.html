@@ -105,6 +105,21 @@
       color: var(--gold);
     }
 
+    .missionStatus {
+      position: absolute;
+      right: 18px;
+      bottom: 18px;
+      z-index: 25;
+      padding: 9px 12px;
+      border-radius: 10px;
+      background: rgba(6, 15, 22, 0.8);
+      border: 1px solid rgba(121, 216, 255, 0.28);
+      color: var(--white);
+      font-size: 12px;
+      pointer-events: none;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.22);
+    }
+
     .panel {
       position: absolute;
       inset: 0;
@@ -120,7 +135,7 @@
     .panel.hidden { opacity: 0; pointer-events: none; }
 
     .panel-box {
-      width: min(76%, 460px);
+      width: min(76%, 500px);
       padding: 26px 22px 20px;
       border-radius: 20px;
       background: rgba(10, 18, 25, 0.82);
@@ -144,6 +159,14 @@
       font-size: 14px;
     }
 
+    .buttonRow {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
     button {
       border: none;
       padding: 12px 22px;
@@ -155,6 +178,17 @@
       background: linear-gradient(180deg, #9fe0ff, #54b7ff);
       box-shadow: 0 12px 22px rgba(84, 183, 255, 0.38);
       transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    button.secondary {
+      background: linear-gradient(180deg, #f3d790, #d09e32);
+      box-shadow: 0 12px 22px rgba(208, 158, 50, 0.3);
+    }
+
+    button.warning {
+      background: linear-gradient(180deg, #ffb0a3, #ff6565);
+      box-shadow: 0 12px 22px rgba(255, 101, 101, 0.3);
+      color: #250708;
     }
 
     button:hover {
@@ -169,6 +203,25 @@
       font-size: 12px;
       letter-spacing: 1px;
       color: rgba(237,246,255,0.7);
+    }
+
+    .miniLinks {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    .miniLinks a {
+      display: inline-block;
+      text-decoration: none;
+      color: var(--blue);
+      background: rgba(11, 19, 29, 0.5);
+      border: 1px solid rgba(125, 202, 255, 0.28);
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 12px;
     }
   </style>
 </head>
@@ -187,6 +240,8 @@
 
     <canvas id="gameCanvas" width="1180" height="760"></canvas>
 
+    <div id="missionStatus" class="missionStatus">背包: 0 · 仓库: 0</div>
+
     <div id="startPanel" class="panel">
       <div class="panel-box">
         <h1 class="title">战场掠夺</h1>
@@ -194,8 +249,17 @@
           WASD 移动 · 鼠标瞄准 · 左键射击 · 空格冲刺<br>
           击杀敌人并搜刮补给包：医疗包、弹药、装甲、升级武器。
         </p>
-        <button id="startBtn">开始任务</button>
-        <div class="hint">提示：敌人越多，物资越稀有，后期会更危险。</div>
+        <div class="buttonRow">
+          <button id="startBtn">开始任务</button>
+          <button id="extractBtn" class="secondary">成功撤离</button>
+        </div>
+        <div class="miniLinks">
+          <a href="warehouse.html">安全仓库</a>
+          <a href="project-delta-rng.html">RNG 市场</a>
+          <a href="project-delta-armory.html">武器台</a>
+          <a href="map-exploration.html">地图</a>
+        </div>
+        <div class="hint">提示：敌人越多，物资越稀有，后期会更危险。死亡会清空当前背包，但不会清空安全仓库。</div>
       </div>
     </div>
   </div>
@@ -206,12 +270,20 @@
 
     const startPanel = document.getElementById("startPanel");
     const startBtn = document.getElementById("startBtn");
+    const extractBtn = document.getElementById("extractBtn");
+    const missionStatusEl = document.getElementById("missionStatus");
 
     const hpEl = document.getElementById("hp");
     const armorEl = document.getElementById("armor");
     const ammoEl = document.getElementById("ammo");
     const scoreEl = document.getElementById("score");
     const timeEl = document.getElementById("time");
+
+    const safeKey = 'projectDeltaSafe';
+    const bagKey = 'projectDeltaBag';
+    const runKey = 'projectDeltaRun';
+    let safeStorage = JSON.parse(localStorage.getItem(safeKey) || '[]');
+    let missionBag = JSON.parse(sessionStorage.getItem(bagKey) || '[]');
 
     const keys = {};
     const mouse = { x: canvas.width / 2, y: canvas.height / 2, down: false };
@@ -276,6 +348,38 @@
       return Math.hypot(a.x - b.x, a.y - b.y);
     }
 
+    function saveBag() {
+      sessionStorage.setItem(bagKey, JSON.stringify(missionBag));
+      updateMissionStatus();
+    }
+
+    function saveSafe() {
+      localStorage.setItem(safeKey, JSON.stringify(safeStorage));
+      updateMissionStatus();
+    }
+
+    function updateMissionStatus() {
+      missionStatusEl.textContent = `背包: ${missionBag.length} · 仓库: ${safeStorage.length}`;
+    }
+
+    function addMissionLoot(name, type, value) {
+      missionBag.push({ name, type, value });
+      saveBag();
+    }
+
+    function clearMissionBag() {
+      missionBag = [];
+      saveBag();
+    }
+
+    function moveBagToSafe() {
+      if (!missionBag.length) return;
+      safeStorage.push(...missionBag);
+      missionBag = [];
+      saveBag();
+      saveSafe();
+    }
+
     function resetGame() {
       player.x = canvas.width / 2;
       player.y = canvas.height / 2;
@@ -300,7 +404,10 @@
       elapsed = 0;
       score = 0;
       startTimestamp = performance.now();
+      clearMissionBag();
+      sessionStorage.setItem(runKey, 'active');
       updateHud();
+      updateMissionStatus();
     }
 
     function updateHud() {
@@ -322,21 +429,36 @@
     function showGameOver() {
       gameState = "menu";
       startPanel.classList.remove("hidden");
+      clearMissionBag();
+      sessionStorage.setItem(runKey, 'inactive');
       const box = startPanel.querySelector(".panel-box");
       box.innerHTML = `
         <h1 class="title" style="color: var(--red);">任务失败</h1>
         <p class="subtitle">
           本次分数：<strong style="color: var(--gold);">${Math.floor(score)}</strong><br>
           生存时间：<strong style="color: var(--blue);">${Math.floor(elapsed / 1000)}s</strong><br>
-          物资搜刮了不少，但还差一步。
+          你的背包已清空，但安全仓库不会被清空。<br>
+          继续新一轮任务即可重新搜刮物资。
         </p>
-        <button id="retryBtn">再来一局</button>
+        <div class="buttonRow">
+          <button id="retryBtn">再来一局</button>
+          <button id="retrySafeBtn" class="secondary">查看仓库</button>
+        </div>
+        <div class="miniLinks">
+          <a href="warehouse.html">安全仓库</a>
+          <a href="project-delta-rng.html">RNG 市场</a>
+          <a href="project-delta-armory.html">武器台</a>
+        </div>
         <div class="hint">继续冲锋，战场不会放过你。</div>
       `;
 
       document.getElementById("retryBtn").addEventListener("click", () => {
         startPanel.classList.add("hidden");
         startGame();
+      });
+
+      document.getElementById("retrySafeBtn").addEventListener("click", () => {
+        window.location.href = "warehouse.html";
       });
     }
 
@@ -402,6 +524,17 @@
         type,
         pulse: rand(0, 1000)
       });
+    }
+
+    function addLootFromPickup(type) {
+      const map = {
+        medkit: { name: '医疗包', type: '补给', value: 1200 },
+        ammo: { name: '弹药箱', type: '补给', value: 900 },
+        armor: { name: '装甲板', type: '防具', value: 1800 },
+        gun: { name: '升级武器模块', type: '武器', value: 2800 }
+      };
+      const item = map[type] || { name: '随机物资', type: '补给', value: 1000 };
+      addMissionLoot(item.name, item.type, item.value);
     }
 
     function shoot() {
@@ -589,6 +722,7 @@
             score += 35;
           }
 
+          addLootFromPickup(l.type);
           spawnParticles(l.x, l.y, 22, l.type === "medkit" ? "#7efeb0" : l.type === "ammo" ? "#ffd866" : l.type === "armor" ? "#7ec1ff" : "#d7d6ff", 1.5);
           loot.splice(i, 1);
           continue;
@@ -643,6 +777,7 @@
       }
 
       updateHud();
+      updateMissionStatus();
     }
 
     function drawBackground() {
@@ -878,6 +1013,47 @@
       }
     }
 
+    function extractRun() {
+      if (gameState !== "playing") {
+        if (!missionBag.length) {
+          window.location.href = 'warehouse.html';
+          return;
+        }
+      }
+      if (!missionBag.length) {
+        window.location.href = 'warehouse.html';
+        return;
+      }
+      moveBagToSafe();
+      gameState = "menu";
+      startPanel.classList.remove("hidden");
+      const box = startPanel.querySelector(".panel-box");
+      box.innerHTML = `
+        <h1 class="title" style="color: var(--green);">撤离成功</h1>
+        <p class="subtitle">
+          任务完成，背包中的物资已安全存入仓库。<br>
+          当前仓库数量：<strong style="color: var(--gold);">${safeStorage.length}</strong>
+        </p>
+        <div class="buttonRow">
+          <button id="nextRunBtn">开始下一轮</button>
+          <button id="warehouseBtn" class="secondary">查看仓库</button>
+        </div>
+        <div class="miniLinks">
+          <a href="warehouse.html">安全仓库</a>
+          <a href="project-delta-rng.html">RNG 市场</a>
+          <a href="project-delta-armory.html">武器台</a>
+        </div>
+        <div class="hint">你可以在仓库中查看永久保存的物资。</div>
+      `;
+      document.getElementById("nextRunBtn").addEventListener("click", () => {
+        startPanel.classList.add("hidden");
+        startGame();
+      });
+      document.getElementById("warehouseBtn").addEventListener("click", () => {
+        window.location.href = "warehouse.html";
+      });
+    }
+
     window.addEventListener("keydown", (e) => {
       keys[e.key] = true;
       if (e.key === " ") e.preventDefault();
@@ -906,6 +1082,8 @@
     });
 
     startBtn.addEventListener("click", startGame);
+    extractBtn.addEventListener("click", extractRun);
+    updateMissionStatus();
     resetGame();
     render();
   </script>
