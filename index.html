@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Delta Force：战场掠夺</title>
+  <style>
+    :root {
+      --bg0: #071018;
+      --bg1: #0d1824;
+      --bg2: #101f2b;
+      --panel: rgba(10, 18, 25, 0.72);
+      --border: rgba(118, 181, 255, 0.38);
+      --white: #edf6ff;
+      --blue: #7dcaff;
+      --green: #78f0b1;
+      --gold: #ffd76c;
+      --red: #ff7d6d;
+      --orange: #ffb25d;
+      --purple: #b9b8ff;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+      background: linear-gradient(180deg, var(--bg0), var(--bg1) 38%, var(--bg2));
+      color: var(--white);
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+
+    #gameWrap {
+      position: relative;
+      width: min(96vw, 1180px);
+      height: min(88vh, 760px);
+      border-radius: 18px;
+      overflow: hidden;
+      border: 2px solid var(--border);
+      background: radial-gradient(circle at top, rgba(67, 113, 151, 0.22), transparent 32%),
+                  linear-gradient(180deg, #0a1218, #101a25);
+      box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255,255,255,0.04);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: #081118;
+      cursor: crosshair;
+    }
+
+    .hud {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 20;
+      pointer-events: none;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    }
+
+    .brand {
+      padding: 9px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(125, 202, 255, 0.32);
+      background: rgba(11, 19, 29, 0.45);
+      color: var(--blue);
+      font-weight: 700;
+      letter-spacing: 1px;
+      font-size: 14px;
+    }
+
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .stat {
+      min-width: 92px;
+      text-align: center;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(125, 202, 255, 0.18);
+      background: rgba(11, 19, 29, 0.45);
+      font-size: 13px;
+      color: var(--white);
+    }
+
+    .stat strong {
+      color: var(--gold);
+    }
+
+    .panel {
+      position: absolute;
+      inset: 0;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(5, 10, 15, 0.58);
+      backdrop-filter: blur(4px);
+      transition: opacity 0.25s ease;
+    }
+
+    .panel.hidden { opacity: 0; pointer-events: none; }
+
+    .panel-box {
+      width: min(76%, 460px);
+      padding: 26px 22px 20px;
+      border-radius: 20px;
+      background: rgba(10, 18, 25, 0.82);
+      border: 1px solid rgba(125, 202, 255, 0.42);
+      box-shadow: 0 24px 55px rgba(0,0,0,0.5);
+      text-align: center;
+    }
+
+    .title {
+      margin: 0 0 12px;
+      font-size: clamp(28px, 4vw, 48px);
+      letter-spacing: 2px;
+      color: var(--green);
+      text-shadow: 0 0 18px rgba(120, 240, 177, 0.25);
+    }
+
+    .subtitle {
+      margin: 0 0 18px;
+      color: rgba(237, 246, 255, 0.86);
+      line-height: 1.8;
+      font-size: 14px;
+    }
+
+    button {
+      border: none;
+      padding: 12px 22px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      color: #04131b;
+      background: linear-gradient(180deg, #9fe0ff, #54b7ff);
+      box-shadow: 0 12px 22px rgba(84, 183, 255, 0.38);
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 16px 26px rgba(84, 183, 255, 0.44);
+    }
+
+    button:active { transform: translateY(0); }
+
+    .hint {
+      margin-top: 16px;
+      font-size: 12px;
+      letter-spacing: 1px;
+      color: rgba(237,246,255,0.7);
+    }
+  </style>
+</head>
+<body>
+  <div id="gameWrap">
+    <div class="hud">
+      <div class="brand">Delta Force：战场掠夺</div>
+      <div class="stats">
+        <div class="stat">HP <strong id="hp">100</strong></div>
+        <div class="stat">装甲 <strong id="armor">0</strong></div>
+        <div class="stat">弹药 <strong id="ammo">30</strong></div>
+        <div class="stat">分数 <strong id="score">0</strong></div>
+        <div class="stat">时间 <strong id="time">0s</strong></div>
+      </div>
+    </div>
+
+    <canvas id="gameCanvas" width="1180" height="760"></canvas>
+
+    <div id="startPanel" class="panel">
+      <div class="panel-box">
+        <h1 class="title">战场掠夺</h1>
+        <p class="subtitle">
+          WASD 移动 · 鼠标瞄准 · 左键射击 · 空格冲刺<br>
+          击杀敌人并搜刮补给包：医疗包、弹药、装甲、升级武器。
+        </p>
+        <button id="startBtn">开始任务</button>
+        <div class="hint">提示：敌人越多，物资越稀有，后期会更危险。</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const startPanel = document.getElementById("startPanel");
+    const startBtn = document.getElementById("startBtn");
+
+    const hpEl = document.getElementById("hp");
+    const armorEl = document.getElementById("armor");
+    const ammoEl = document.getElementById("ammo");
+    const scoreEl = document.getElementById("score");
+    const timeEl = document.getElementById("time");
+
+    const keys = {};
+    const mouse = { x: canvas.width / 2, y: canvas.height / 2, down: false };
+
+    const config = {
+      worldWidth: canvas.width,
+      worldHeight: canvas.height,
+      playerBaseSpeed: 3.6,
+      playerDashBoost: 1.85,
+      shootInterval: 0.12,
+      maxAmmo: 30,
+      maxReserveAmmo: 240,
+      spawnInterval: 0.85,
+      lootInterval: 7.5,
+      enemySpeedMin: 0.4,
+      enemySpeedMax: 3.2,
+      bulletSpeed: 10.5,
+      maxWeaponLevel: 4,
+      startingHealth: 100,
+      startingArmor: 0
+    };
+
+    let gameState = "menu";
+    let loopId = null;
+    let elapsed = 0;
+    let startTimestamp = 0;
+    let score = 0;
+    let lastTs = 0;
+
+    let bullets = [];
+    let enemies = [];
+    let loot = [];
+    let particles = [];
+    let muzzleFlashes = [];
+
+    const player = {
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      r: 18,
+      speed: config.playerBaseSpeed,
+      angle: 0,
+      hp: config.startingHealth,
+      maxHp: config.startingHealth,
+      armor: config.startingArmor,
+      ammo: config.maxAmmo,
+      reserveAmmo: 120,
+      fireCooldown: 0,
+      dashCooldown: 0,
+      dashTimer: 0,
+      weaponLevel: 1
+    };
+
+    function clamp(v, min, max) {
+      return Math.min(Math.max(v, min), max);
+    }
+
+    function rand(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    function dist(a, b) {
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    }
+
+    function resetGame() {
+      player.x = canvas.width / 2;
+      player.y = canvas.height / 2;
+      player.r = 18;
+      player.speed = config.playerBaseSpeed;
+      player.angle = 0;
+      player.hp = config.startingHealth;
+      player.maxHp = config.startingHealth;
+      player.armor = config.startingArmor;
+      player.ammo = config.maxAmmo;
+      player.reserveAmmo = 120;
+      player.fireCooldown = 0;
+      player.dashCooldown = 0;
+      player.dashTimer = 0;
+      player.weaponLevel = 1;
+
+      bullets = [];
+      enemies = [];
+      loot = [];
+      particles = [];
+      muzzleFlashes = [];
+      elapsed = 0;
+      score = 0;
+      startTimestamp = performance.now();
+      updateHud();
+    }
+
+    function updateHud() {
+      hpEl.textContent = Math.max(0, Math.ceil(player.hp));
+      armorEl.textContent = Math.max(0, Math.ceil(player.armor));
+      ammoEl.textContent = `${player.ammo}/${player.reserveAmmo}`;
+      scoreEl.textContent = Math.floor(score);
+      timeEl.textContent = `${Math.floor(elapsed / 1000)}s`;
+    }
+
+    function startGame() {
+      resetGame();
+      gameState = "playing";
+      startPanel.classList.add("hidden");
+      if (loopId) cancelAnimationFrame(loopId);
+      loopId = requestAnimationFrame(gameLoop);
+    }
+
+    function showGameOver() {
+      gameState = "menu";
+      startPanel.classList.remove("hidden");
+      const box = startPanel.querySelector(".panel-box");
+      box.innerHTML = `
+        <h1 class="title" style="color: var(--red);">任务失败</h1>
+        <p class="subtitle">
+          本次分数：<strong style="color: var(--gold);">${Math.floor(score)}</strong><br>
+          生存时间：<strong style="color: var(--blue);">${Math.floor(elapsed / 1000)}s</strong><br>
+          物资搜刮了不少，但还差一步。
+        </p>
+        <button id="retryBtn">再来一局</button>
+        <div class="hint">继续冲锋，战场不会放过你。</div>
+      `;
+
+      document.getElementById("retryBtn").addEventListener("click", () => {
+        startPanel.classList.add("hidden");
+        startGame();
+      });
+    }
+
+    function spawnParticles(x, y, count, color, speedMul = 1) {
+      for (let i = 0; i < count; i++) {
+        const a = rand(0, Math.PI * 2);
+        const speed = rand(0.6, 4.2) * speedMul;
+        particles.push({
+          x, y,
+          vx: Math.cos(a) * speed,
+          vy: Math.sin(a) * speed,
+          life: rand(20, 60),
+          color
+        });
+      }
+    }
+
+    function spawnMuzzleFlash(x, y, angle) {
+      muzzleFlashes.push({
+        x, y,
+        angle,
+        life: 0.08,
+        len: 18 + Math.random() * 7
+      });
+    }
+
+    function spawnEnemy() {
+      const edge = Math.floor(Math.random() * 4);
+      let x = 0, y = 0;
+      if (edge === 0) {
+        x = rand(-40, canvas.width + 40);
+        y = -40;
+      } else if (edge === 1) {
+        x = canvas.width + 40;
+        y = rand(-40, canvas.height + 40);
+      } else if (edge === 2) {
+        x = rand(-40, canvas.width + 40);
+        y = canvas.height + 40;
+      } else {
+        x = -40;
+        y = rand(-40, canvas.height + 40);
+      }
+
+      const level = Math.min(6, 1 + Math.floor(elapsed / 18000));
+      const baseR = rand(14, 24);
+      const enemy = {
+        x, y,
+        r: baseR,
+        hp: 1 + level,
+        speed: 0.7 + level * 0.18 + rand(0, 0.7),
+        color: ["#ff8f75", "#ff5a5f", "#ff9f49", "#f96fb2"][Math.floor(Math.random() * 4)],
+        damage: 1 + level * 0.2
+      };
+      enemies.push(enemy);
+    }
+
+    function spawnLoot(x, y) {
+      const pool = ["medkit", "ammo", "armor", "gun"];
+      const type = pool[Math.floor(Math.random() * pool.length)];
+      loot.push({
+        x, y,
+        r: 11,
+        type,
+        pulse: rand(0, 1000)
+      });
+    }
+
+    function shoot() {
+      if (gameState !== "playing") return;
+      if (player.fireCooldown > 0) return;
+      if (player.ammo <= 0) {
+        if (player.reserveAmmo > 0) {
+          const reloadAmount = Math.min(30, player.reserveAmmo);
+          player.ammo = reloadAmount;
+          player.reserveAmmo -= reloadAmount;
+        } else {
+          return;
+        }
+      }
+
+      player.ammo -= 1;
+      player.fireCooldown = config.shootInterval;
+
+      const shotCount = player.weaponLevel >= 3 ? 3 : 1;
+      const spread = player.weaponLevel >= 3 ? 0.22 : 0.06;
+
+      for (let i = 0; i < shotCount; i++) {
+        const angle = player.angle + (shotCount === 1 ? 0 : (i - (shotCount - 1) / 2) * spread);
+        const muzzleX = player.x + Math.cos(angle) * (player.r + 20);
+        const muzzleY = player.y + Math.sin(angle) * (player.r + 20);
+
+        bullets.push({
+          x: muzzleX,
+          y: muzzleY,
+          vx: Math.cos(angle) * config.bulletSpeed,
+          vy: Math.sin(angle) * config.bulletSpeed,
+          r: 4,
+          life: 52,
+          color: "#dff7ff"
+        });
+
+        spawnMuzzleFlash(muzzleX, muzzleY, angle);
+      }
+
+      spawnParticles(
+        player.x + Math.cos(player.angle) * 20,
+        player.y + Math.sin(player.angle) * 20,
+        6,
+        "#b7ebff",
+        1.1
+      );
+    }
+
+    function dash() {
+      if (gameState !== "playing") return;
+      if (player.dashCooldown > 0) return;
+      player.dashCooldown = 1.8;
+      player.dashTimer = 0.18;
+    }
+
+    function handleInput() {
+      const dx = mouse.x - player.x;
+      const dy = mouse.y - player.y;
+      player.angle = Math.atan2(dy, dx);
+
+      let moveX = 0;
+      let moveY = 0;
+      if (keys["w"] || keys["W"]) moveY -= 1;
+      if (keys["s"] || keys["S"]) moveY += 1;
+      if (keys["a"] || keys["A"]) moveX -= 1;
+      if (keys["d"] || keys["D"]) moveX += 1;
+
+      if (moveX || moveY) {
+        const len = Math.hypot(moveX, moveY) || 1;
+        moveX /= len;
+        moveY /= len;
+      }
+
+      const boost = player.dashTimer > 0 ? config.playerDashBoost : 1;
+      const step = player.speed * 60 * (1 / 60) * boost;
+      player.x += moveX * step;
+      player.y += moveY * step;
+
+      player.x = clamp(player.x, 30, canvas.width - 30);
+      player.y = clamp(player.y, 30, canvas.height - 30);
+
+      if (mouse.down) shoot();
+
+      if ((keys[" "] || keys["Space"]) && player.dashCooldown <= 0) {
+        dash();
+        keys[" "] = false;
+        keys["Space"] = false;
+      }
+    }
+
+    function updatePlayer(dt) {
+      if (player.fireCooldown > 0) player.fireCooldown -= dt;
+      if (player.dashCooldown > 0) player.dashCooldown -= dt;
+      if (player.dashTimer > 0) player.dashTimer -= dt;
+
+      if (player.ammo <= 0 && player.reserveAmmo > 0 && Math.random() < 0.02) {
+        const refill = Math.min(1, player.reserveAmmo);
+        player.ammo += refill;
+        player.reserveAmmo -= refill;
+      }
+    }
+
+    function updateBullets(dt) {
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        const b = bullets[i];
+        b.x += b.vx * 60 * dt;
+        b.y += b.vy * 60 * dt;
+        b.life -= 60 * dt;
+
+        if (b.x < -60 || b.x > canvas.width + 60 || b.y < -60 || b.y > canvas.height + 60 || b.life <= 0) {
+          bullets.splice(i, 1);
+          continue;
+        }
+
+        for (let j = enemies.length - 1; j >= 0; j--) {
+          const e = enemies[j];
+          if (dist(b, e) < b.r + e.r) {
+            e.hp -= 1;
+            bullets.splice(i, 1);
+            spawnParticles(b.x, b.y, 5, "#d7ebff", 0.85);
+
+            if (e.hp <= 0) {
+              enemies.splice(j, 1);
+              score += 15;
+              spawnParticles(e.x, e.y, 18, "#ffcc7a", 1.35);
+
+              if (Math.random() < 0.32) {
+                spawnLoot(e.x, e.y);
+              }
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    function updateEnemies(dt) {
+      for (let i = enemies.length - 1; i >= 0; i--) {
+        const e = enemies[i];
+        const dx = player.x - e.x;
+        const dy = player.y - e.y;
+        const len = Math.hypot(dx, dy) || 1;
+
+        e.x += (dx / len) * e.speed * 60 * dt;
+        e.y += (dy / len) * e.speed * 60 * dt;
+
+        if (dist(player, e) < player.r + e.r + 4) {
+          const rawDamage = 17 * dt * 60 * e.damage;
+          let remaining = rawDamage;
+
+          if (player.armor > 0) {
+            const absorbed = Math.min(player.armor, remaining * 0.8);
+            player.armor -= absorbed;
+            remaining -= absorbed;
+          }
+
+          player.hp -= remaining;
+          spawnParticles(e.x, e.y, 10, "#ff8d6a", 1.2);
+
+          if (player.hp <= 0) {
+            player.hp = 0;
+            gameState = "menu";
+            showGameOver();
+            return;
+          }
+        }
+      }
+    }
+
+    function updateLoot(dt) {
+      for (let i = loot.length - 1; i >= 0; i--) {
+        const l = loot[i];
+        l.pulse += 60 * dt;
+
+        if (dist(player, l) < player.r + l.r + 3) {
+          if (l.type === "medkit") {
+            player.hp = Math.min(player.maxHp, player.hp + 32);
+          } else if (l.type === "ammo") {
+            player.reserveAmmo = Math.min(config.maxReserveAmmo, player.reserveAmmo + 22);
+            player.ammo = Math.min(config.maxAmmo, player.ammo + 12);
+          } else if (l.type === "armor") {
+            player.armor += 25;
+          } else if (l.type === "gun") {
+            player.weaponLevel = Math.min(config.maxWeaponLevel, player.weaponLevel + 1);
+            score += 35;
+          }
+
+          spawnParticles(l.x, l.y, 22, l.type === "medkit" ? "#7efeb0" : l.type === "ammo" ? "#ffd866" : l.type === "armor" ? "#7ec1ff" : "#d7d6ff", 1.5);
+          loot.splice(i, 1);
+          continue;
+        }
+
+        if (l.x < -60 || l.x > canvas.width + 60 || l.y < -60 || l.y > canvas.height + 60) {
+          loot.splice(i, 1);
+        }
+      }
+    }
+
+    function updateParticles(dt) {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx * 60 * dt;
+        p.y += p.vy * 60 * dt;
+        p.life -= 60 * dt;
+        if (p.life <= 0) particles.splice(i, 1);
+      }
+    }
+
+    function updateMuzzleFlashes(dt) {
+      for (let i = muzzleFlashes.length - 1; i >= 0; i--) {
+        const f = muzzleFlashes[i];
+        f.life -= dt;
+        if (f.life <= 0) muzzleFlashes.splice(i, 1);
+      }
+    }
+
+    function update(dt) {
+      if (gameState !== "playing") return;
+
+      elapsed = performance.now() - startTimestamp;
+      score += dt * 10;
+
+      handleInput();
+      updatePlayer(dt);
+      updateBullets(dt);
+      updateEnemies(dt);
+      updateLoot(dt);
+      updateParticles(dt);
+      updateMuzzleFlashes(dt);
+
+      if ((Math.random() < 0.022 + Math.min(0.028, elapsed / 50000))) {
+        spawnEnemy();
+      }
+
+      if (Math.random() < 0.01) {
+        const x = rand(80, canvas.width - 80);
+        const y = rand(80, canvas.height - 80);
+        spawnLoot(x, y);
+      }
+
+      updateHud();
+    }
+
+    function drawBackground() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const grd = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      grd.addColorStop(0, "#0b1219");
+      grd.addColorStop(1, "#101b27");
+      ctx.fillStyle = grd;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.strokeStyle = "rgba(148, 178, 205, 0.06)";
+      for (let x = 0; x < canvas.width; x += 50) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += 50) {
+        ctx.beginPath();
+        ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+      }
+
+      ctx.fillStyle = "rgba(120, 152, 132, 0.05)";
+      for (let i = 0; i < 28; i++) {
+        const x = ((i * 115) + (elapsed * 0.04)) % (canvas.width + 120) - 60;
+        const y = (i * 71) % canvas.height;
+        ctx.fillRect(x, y, 72, 26);
+      }
+    }
+
+    function drawPlayer() {
+      ctx.save();
+      ctx.translate(player.x, player.y);
+      ctx.rotate(player.angle);
+
+      ctx.fillStyle = "rgba(0,0,0,0.28)";
+      ctx.beginPath();
+      ctx.ellipse(0, player.r + 18, 20, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#dfe8f5";
+      ctx.fillRect(8, -2, 22, 4);
+
+      ctx.fillStyle = "#66e2a7";
+      ctx.beginPath();
+      ctx.arc(0, 0, player.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#ebf9ff";
+      ctx.beginPath();
+      ctx.arc(0, -7, 9, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#1d3b52";
+      ctx.fillRect(-6, -10, 12, 7);
+
+      if (player.weaponLevel > 1) {
+        ctx.strokeStyle = "#ffd866";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, player.r + 6, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+
+    function drawBullets() {
+      bullets.forEach((b) => {
+        ctx.fillStyle = b.color;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    function drawEnemies() {
+      enemies.forEach((e) => {
+        ctx.save();
+        ctx.translate(e.x, e.y);
+
+        ctx.fillStyle = "rgba(0,0,0,0.26)";
+        ctx.beginPath();
+        ctx.ellipse(0, e.r + 10, e.r + 9, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = e.color;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.r, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#f9efe5";
+        ctx.beginPath();
+        ctx.arc(0, -3, e.r * 0.38, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "rgba(15, 8, 9, 0.7)";
+        ctx.fillRect(-e.r, -e.r - 13, e.r * 2, 4);
+
+        const healthRatio = clamp((e.hp / (1 + Math.floor(elapsed / 18000) + 1)), 0, 1);
+        ctx.fillStyle = "#83ffbe";
+        ctx.fillRect(-e.r, -e.r - 13, e.r * 2 * healthRatio, 4);
+
+        ctx.restore();
+      });
+    }
+
+    function drawLoot() {
+      loot.forEach((l) => {
+        const pulse = 1 + Math.sin(l.pulse * 0.12) * 0.18;
+        ctx.save();
+        ctx.translate(l.x, l.y);
+        ctx.scale(pulse, pulse);
+
+        if (l.type === "medkit") {
+          ctx.fillStyle = "#7efeb0";
+          ctx.fillRect(-9, -9, 18, 18);
+          ctx.strokeStyle = "#e6fff2";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(0, -7); ctx.lineTo(0, 7);
+          ctx.moveTo(-7, 0); ctx.lineTo(7, 0);
+          ctx.stroke();
+        } else if (l.type === "ammo") {
+          ctx.fillStyle = "#ffd866";
+          ctx.fillRect(-10, -7, 20, 14);
+          ctx.strokeStyle = "#fff4b3";
+          ctx.strokeRect(-10, -7, 20, 14);
+        } else if (l.type === "armor") {
+          ctx.fillStyle = "#7ec1ff";
+          ctx.beginPath();
+          ctx.moveTo(0, -12);
+          ctx.lineTo(10, -7);
+          ctx.lineTo(10, 7);
+          ctx.lineTo(0, 12);
+          ctx.lineTo(-10, 7);
+          ctx.lineTo(-10, -7);
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          ctx.fillStyle = "#d7d6ff";
+          ctx.fillRect(-11, -11, 22, 22);
+          ctx.fillStyle = "#5f67ff";
+          ctx.fillRect(-6, -6, 12, 12);
+        }
+
+        ctx.restore();
+      });
+    }
+
+    function drawParticles() {
+      particles.forEach((p) => {
+        ctx.globalAlpha = Math.max(0, p.life / 60);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x, p.y, 3, 3);
+        ctx.globalAlpha = 1;
+      });
+    }
+
+    function drawMuzzleFlashes() {
+      muzzleFlashes.forEach((f) => {
+        ctx.save();
+        ctx.translate(f.x, f.y);
+        ctx.rotate(f.angle);
+        ctx.fillStyle = `rgba(255, 220, 140, ${Math.max(0, f.life / 0.08)})`;
+        ctx.fillRect(0, -2, f.len, 4);
+        ctx.restore();
+      });
+    }
+
+    function drawCrosshair() {
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,0.8)";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(mouse.x, mouse.y, 12, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(mouse.x - 16, mouse.y); ctx.lineTo(mouse.x - 6, mouse.y);
+      ctx.moveTo(mouse.x + 6, mouse.y); ctx.lineTo(mouse.x + 16, mouse.y);
+      ctx.moveTo(mouse.x, mouse.y - 16); ctx.lineTo(mouse.x, mouse.y - 6);
+      ctx.moveTo(mouse.x, mouse.y + 6); ctx.lineTo(mouse.x, mouse.y + 16);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawBars() {
+      const x = 20;
+      const y = canvas.height - 30;
+      const w = 180;
+      const h = 12;
+
+      ctx.fillStyle = "rgba(0,0,0,0.3)";
+      ctx.fillRect(x, y, w, h);
+
+      const hpRatio = clamp(player.hp / player.maxHp, 0, 1);
+      ctx.fillStyle = hpRatio > 0.5 ? "#70f7a7" : hpRatio > 0.25 ? "#ffd866" : "#ff7a7a";
+      ctx.fillRect(x, y, w * hpRatio, h);
+      ctx.strokeStyle = "rgba(255,255,255,0.25)";
+      ctx.strokeRect(x, y, w, h);
+
+      const armorW = 120;
+      const armorX = canvas.width - 140;
+      ctx.fillStyle = "rgba(0,0,0,0.3)";
+      ctx.fillRect(armorX, y, armorW, h);
+      ctx.fillStyle = "#7ec1ff";
+      ctx.fillRect(armorX, y, armorW * clamp(player.armor / 100, 0, 1), h);
+      ctx.strokeStyle = "rgba(255,255,255,0.25)";
+      ctx.strokeRect(armorX, y, armorW, h);
+    }
+
+    function render() {
+      drawBackground();
+      drawLoot();
+      drawBullets();
+      drawEnemies();
+      drawMuzzleFlashes();
+      drawPlayer();
+      drawParticles();
+      drawCrosshair();
+      drawBars();
+    }
+
+    function gameLoop(ts) {
+      if (!lastTs) lastTs = ts;
+      const dt = Math.min((ts - lastTs) / 1000, 0.032);
+      lastTs = ts;
+
+      update(dt);
+      render();
+
+      if (gameState === "playing") {
+        loopId = requestAnimationFrame(gameLoop);
+      }
+    }
+
+    window.addEventListener("keydown", (e) => {
+      keys[e.key] = true;
+      if (e.key === " ") e.preventDefault();
+    });
+
+    window.addEventListener("keyup", (e) => {
+      keys[e.key] = false;
+    });
+
+    canvas.addEventListener("mousemove", (e) => {
+      const rect = canvas.getBoundingClientRect();
+      mouse.x = ((e.clientX - rect.left) / rect.width) * canvas.width;
+      mouse.y = ((e.clientY - rect.top) / rect.height) * canvas.height;
+    });
+
+    canvas.addEventListener("mousedown", (e) => {
+      if (e.button === 0) mouse.down = true;
+    });
+
+    canvas.addEventListener("mouseup", () => mouse.down = false);
+    canvas.addEventListener("mouseleave", () => mouse.down = false);
+
+    window.addEventListener("blur", () => {
+      Object.keys(keys).forEach((k) => keys[k] = false);
+      mouse.down = false;
+    });
+
+    startBtn.addEventListener("click", startGame);
+    resetGame();
+    render();
+  </script>
+</body>
+</html>
