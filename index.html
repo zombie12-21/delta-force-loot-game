@@ -105,6 +105,22 @@
       color: var(--gold);
     }
 
+    .missionInfo {
+      position: absolute;
+      left: 20px;
+      bottom: 18px;
+      z-index: 18;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(8, 18, 26, 0.7);
+      border: 1px solid rgba(121, 216, 255, 0.25);
+      color: var(--white);
+      font-size: 12px;
+      line-height: 1.5;
+      pointer-events: none;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.2);
+    }
+
     .missionStatus {
       position: absolute;
       right: 18px;
@@ -135,7 +151,7 @@
     .panel.hidden { opacity: 0; pointer-events: none; }
 
     .panel-box {
-      width: min(76%, 500px);
+      width: min(76%, 520px);
       padding: 26px 22px 20px;
       border-radius: 20px;
       background: rgba(10, 18, 25, 0.82);
@@ -238,20 +254,21 @@
       </div>
     </div>
 
-    <canvas id="gameCanvas" width="1180" height="760"></canvas>
-
+    <div id="missionInfo" class="missionInfo">目标：收集 0 / 3 个物资 · 前往撤离区</div>
     <div id="missionStatus" class="missionStatus">背包: 0 · 仓库: 0</div>
+
+    <canvas id="gameCanvas" width="1180" height="760"></canvas>
 
     <div id="startPanel" class="panel">
       <div class="panel-box">
         <h1 class="title">战场掠夺</h1>
         <p class="subtitle">
           WASD 移动 · 鼠标瞄准 · 左键射击 · 空格冲刺<br>
-          击杀敌人并搜刮补给包：医疗包、弹药、装甲、升级武器。
+          探索战场，搜集物资，最后到达撤离区完成任务。
         </p>
         <div class="buttonRow">
           <button id="startBtn">开始任务</button>
-          <button id="extractBtn" class="secondary">成功撤离</button>
+          <button id="extractBtn" class="secondary">撤离</button>
         </div>
         <div class="miniLinks">
           <a href="warehouse.html">安全仓库</a>
@@ -259,7 +276,7 @@
           <a href="project-delta-armory.html">武器台</a>
           <a href="map-exploration.html">地图</a>
         </div>
-        <div class="hint">提示：敌人越多，物资越稀有，后期会更危险。死亡会清空当前背包，但不会清空安全仓库。</div>
+        <div class="hint">提示：不是纯打怪模式。你可以在地图中移动、收集物资并撤离。死亡会清空背包，但不会清空安全仓库。</div>
       </div>
     </div>
   </div>
@@ -271,6 +288,7 @@
     const startPanel = document.getElementById("startPanel");
     const startBtn = document.getElementById("startBtn");
     const extractBtn = document.getElementById("extractBtn");
+    const missionInfoEl = document.getElementById("missionInfo");
     const missionStatusEl = document.getElementById("missionStatus");
 
     const hpEl = document.getElementById("hp");
@@ -282,28 +300,27 @@
     const safeKey = 'projectDeltaSafe';
     const bagKey = 'projectDeltaBag';
     const runKey = 'projectDeltaRun';
+
     let safeStorage = JSON.parse(localStorage.getItem(safeKey) || '[]');
     let missionBag = JSON.parse(sessionStorage.getItem(bagKey) || '[]');
 
     const keys = {};
     const mouse = { x: canvas.width / 2, y: canvas.height / 2, down: false };
 
+    const world = { w: 1800, h: 1200 };
+    const camera = { x: 0, y: 0 };
+
     const config = {
-      worldWidth: canvas.width,
-      worldHeight: canvas.height,
       playerBaseSpeed: 3.6,
       playerDashBoost: 1.85,
       shootInterval: 0.12,
       maxAmmo: 30,
       maxReserveAmmo: 240,
-      spawnInterval: 0.85,
-      lootInterval: 7.5,
-      enemySpeedMin: 0.4,
-      enemySpeedMax: 3.2,
       bulletSpeed: 10.5,
       maxWeaponLevel: 4,
       startingHealth: 100,
-      startingArmor: 0
+      startingArmor: 0,
+      objectiveTarget: 3
     };
 
     let gameState = "menu";
@@ -312,16 +329,20 @@
     let startTimestamp = 0;
     let score = 0;
     let lastTs = 0;
+    let collected = 0;
+    let missionCleared = false;
 
     let bullets = [];
     let enemies = [];
     let loot = [];
     let particles = [];
     let muzzleFlashes = [];
+    let supplyPoints = [];
+    let extractionZone = { x: 1640, y: 1060, r: 74 };
 
     const player = {
-      x: canvas.width / 2,
-      y: canvas.height / 2,
+      x: 180,
+      y: 220,
       r: 18,
       speed: config.playerBaseSpeed,
       angle: 0,
@@ -362,6 +383,22 @@
       missionStatusEl.textContent = `背包: ${missionBag.length} · 仓库: ${safeStorage.length}`;
     }
 
+    function getAreaName() {
+      const x = player.x;
+      const y = player.y;
+      if (x < 420 && y < 420) return '前线哨站';
+      if (x < 920 && y < 760) return '补给线';
+      if (x > 1200 && y > 780) return '撤离区';
+      if (x > 1100) return '北部高地';
+      if (y > 700) return '南部通道';
+      return '战区中心';
+    }
+
+    function updateMissionInfo() {
+      const objective = collected >= config.objectiveTarget ? '已收集完毕，前往撤离区' : `收集 ${collected} / ${config.objectiveTarget} 个物资`;
+      missionInfoEl.textContent = `目标：${objective} · 区域：${getAreaName()}`;
+    }
+
     function addMissionLoot(name, type, value) {
       missionBag.push({ name, type, value });
       saveBag();
@@ -380,9 +417,19 @@
       saveSafe();
     }
 
+    function spawnSupplyPoints() {
+      supplyPoints = [
+        { x: 360, y: 300, value: 1, color: '#7efeb0' },
+        { x: 720, y: 540, value: 1, color: '#ffd866' },
+        { x: 980, y: 280, value: 1, color: '#7ec1ff' },
+        { x: 1350, y: 620, value: 1, color: '#d7d6ff' },
+        { x: 620, y: 920, value: 1, color: '#ffa866' }
+      ];
+    }
+
     function resetGame() {
-      player.x = canvas.width / 2;
-      player.y = canvas.height / 2;
+      player.x = 180;
+      player.y = 220;
       player.r = 18;
       player.speed = config.playerBaseSpeed;
       player.angle = 0;
@@ -401,6 +448,9 @@
       loot = [];
       particles = [];
       muzzleFlashes = [];
+      spawnSupplyPoints();
+      collected = 0;
+      missionCleared = false;
       elapsed = 0;
       score = 0;
       startTimestamp = performance.now();
@@ -408,6 +458,7 @@
       sessionStorage.setItem(runKey, 'active');
       updateHud();
       updateMissionStatus();
+      updateMissionInfo();
     }
 
     function updateHud() {
@@ -437,8 +488,8 @@
         <p class="subtitle">
           本次分数：<strong style="color: var(--gold);">${Math.floor(score)}</strong><br>
           生存时间：<strong style="color: var(--blue);">${Math.floor(elapsed / 1000)}s</strong><br>
-          你的背包已清空，但安全仓库不会被清空。<br>
-          继续新一轮任务即可重新搜刮物资。
+          物资搜刮了不少，但还差一步。<br>
+          背包已清空，但安全仓库不会丢失。
         </p>
         <div class="buttonRow">
           <button id="retryBtn">再来一局</button>
@@ -485,45 +536,33 @@
       });
     }
 
-    function spawnEnemy() {
-      const edge = Math.floor(Math.random() * 4);
-      let x = 0, y = 0;
-      if (edge === 0) {
-        x = rand(-40, canvas.width + 40);
-        y = -40;
-      } else if (edge === 1) {
-        x = canvas.width + 40;
-        y = rand(-40, canvas.height + 40);
-      } else if (edge === 2) {
-        x = rand(-40, canvas.width + 40);
-        y = canvas.height + 40;
-      } else {
-        x = -40;
-        y = rand(-40, canvas.height + 40);
-      }
+    function randomNearPlayerRadius(radius = 720) {
+      const angle = Math.random() * Math.PI * 2;
+      const distVal = rand(110, radius);
+      const x = clamp(player.x + Math.cos(angle) * distVal, 40, world.w - 40);
+      const y = clamp(player.y + Math.sin(angle) * distVal, 40, world.h - 40);
+      return { x, y };
+    }
 
+    function spawnEnemy() {
+      const pos = randomNearPlayerRadius(700);
       const level = Math.min(6, 1 + Math.floor(elapsed / 18000));
       const baseR = rand(14, 24);
-      const enemy = {
-        x, y,
+      enemies.push({
+        x: pos.x,
+        y: pos.y,
         r: baseR,
         hp: 1 + level,
         speed: 0.7 + level * 0.18 + rand(0, 0.7),
         color: ["#ff8f75", "#ff5a5f", "#ff9f49", "#f96fb2"][Math.floor(Math.random() * 4)],
         damage: 1 + level * 0.2
-      };
-      enemies.push(enemy);
+      });
     }
 
-    function spawnLoot(x, y) {
+    function spawnLoot(x, y, type = null) {
       const pool = ["medkit", "ammo", "armor", "gun"];
-      const type = pool[Math.floor(Math.random() * pool.length)];
-      loot.push({
-        x, y,
-        r: 11,
-        type,
-        pulse: rand(0, 1000)
-      });
+      const itemType = type || pool[Math.floor(Math.random() * pool.length)];
+      loot.push({ x, y, r: 11, type: itemType, pulse: rand(0, 1000) });
     }
 
     function addLootFromPickup(type) {
@@ -574,13 +613,7 @@
         spawnMuzzleFlash(muzzleX, muzzleY, angle);
       }
 
-      spawnParticles(
-        player.x + Math.cos(player.angle) * 20,
-        player.y + Math.sin(player.angle) * 20,
-        6,
-        "#b7ebff",
-        1.1
-      );
+      spawnParticles(player.x + Math.cos(player.angle) * 20, player.y + Math.sin(player.angle) * 20, 6, '#b7ebff', 1.1);
     }
 
     function dash() {
@@ -591,16 +624,16 @@
     }
 
     function handleInput() {
-      const dx = mouse.x - player.x;
-      const dy = mouse.y - player.y;
+      const dx = mouse.x - (canvas.width / 2);
+      const dy = mouse.y - (canvas.height / 2);
       player.angle = Math.atan2(dy, dx);
 
       let moveX = 0;
       let moveY = 0;
-      if (keys["w"] || keys["W"]) moveY -= 1;
-      if (keys["s"] || keys["S"]) moveY += 1;
-      if (keys["a"] || keys["A"]) moveX -= 1;
-      if (keys["d"] || keys["D"]) moveX += 1;
+      if (keys['w'] || keys['W']) moveY -= 1;
+      if (keys['s'] || keys['S']) moveY += 1;
+      if (keys['a'] || keys['A']) moveX -= 1;
+      if (keys['d'] || keys['D']) moveX += 1;
 
       if (moveX || moveY) {
         const len = Math.hypot(moveX, moveY) || 1;
@@ -613,15 +646,15 @@
       player.x += moveX * step;
       player.y += moveY * step;
 
-      player.x = clamp(player.x, 30, canvas.width - 30);
-      player.y = clamp(player.y, 30, canvas.height - 30);
+      player.x = clamp(player.x, 30, world.w - 30);
+      player.y = clamp(player.y, 30, world.h - 30);
 
       if (mouse.down) shoot();
 
-      if ((keys[" "] || keys["Space"]) && player.dashCooldown <= 0) {
+      if ((keys[' '] || keys['Space']) && player.dashCooldown <= 0) {
         dash();
-        keys[" "] = false;
-        keys["Space"] = false;
+        keys[' '] = false;
+        keys['Space'] = false;
       }
     }
 
@@ -644,7 +677,7 @@
         b.y += b.vy * 60 * dt;
         b.life -= 60 * dt;
 
-        if (b.x < -60 || b.x > canvas.width + 60 || b.y < -60 || b.y > canvas.height + 60 || b.life <= 0) {
+        if (b.x < -60 || b.x > world.w + 60 || b.y < -60 || b.y > world.h + 60 || b.life <= 0) {
           bullets.splice(i, 1);
           continue;
         }
@@ -654,15 +687,14 @@
           if (dist(b, e) < b.r + e.r) {
             e.hp -= 1;
             bullets.splice(i, 1);
-            spawnParticles(b.x, b.y, 5, "#d7ebff", 0.85);
+            spawnParticles(b.x, b.y, 5, '#d7ebff', 0.85);
 
             if (e.hp <= 0) {
               enemies.splice(j, 1);
               score += 15;
-              spawnParticles(e.x, e.y, 18, "#ffcc7a", 1.35);
-
-              if (Math.random() < 0.32) {
-                spawnLoot(e.x, e.y);
+              spawnParticles(e.x, e.y, 18, '#ffcc7a', 1.35);
+              if (Math.random() < 0.35) {
+                spawnLoot(e.x, e.y, ['medkit', 'ammo', 'armor', 'gun'][Math.floor(Math.random() * 4)]);
               }
             }
             break;
@@ -692,14 +724,27 @@
           }
 
           player.hp -= remaining;
-          spawnParticles(e.x, e.y, 10, "#ff8d6a", 1.2);
+          spawnParticles(e.x, e.y, 10, '#ff8d6a', 1.2);
 
           if (player.hp <= 0) {
             player.hp = 0;
-            gameState = "menu";
+            gameState = 'menu';
             showGameOver();
             return;
           }
+        }
+      }
+    }
+
+    function updateSupplyPoints() {
+      for (let i = supplyPoints.length - 1; i >= 0; i--) {
+        const s = supplyPoints[i];
+        if (dist(player, s) < player.r + 18) {
+          collected += 1;
+          addMissionLoot('补给箱物资', '资源', 1500);
+          spawnParticles(s.x, s.y, 22, s.color, 1.5);
+          supplyPoints.splice(i, 1);
+          score += 50;
         }
       }
     }
@@ -710,26 +755,22 @@
         l.pulse += 60 * dt;
 
         if (dist(player, l) < player.r + l.r + 3) {
-          if (l.type === "medkit") {
+          if (l.type === 'medkit') {
             player.hp = Math.min(player.maxHp, player.hp + 32);
-          } else if (l.type === "ammo") {
-            player.reserveAmmo = Math.min(config.maxReserveAmmo, player.reserveAmmo + 22);
-            player.ammo = Math.min(config.maxAmmo, player.ammo + 12);
-          } else if (l.type === "armor") {
+          } else if (l.type === 'ammo') {
+            player.reserveAmmo = Math.min(240, player.reserveAmmo + 22);
+            player.ammo = Math.min(30, player.ammo + 12);
+          } else if (l.type === 'armor') {
             player.armor += 25;
-          } else if (l.type === "gun") {
+          } else if (l.type === 'gun') {
             player.weaponLevel = Math.min(config.maxWeaponLevel, player.weaponLevel + 1);
             score += 35;
           }
 
           addLootFromPickup(l.type);
-          spawnParticles(l.x, l.y, 22, l.type === "medkit" ? "#7efeb0" : l.type === "ammo" ? "#ffd866" : l.type === "armor" ? "#7ec1ff" : "#d7d6ff", 1.5);
+          spawnParticles(l.x, l.y, 22, l.type === 'medkit' ? '#7efeb0' : l.type === 'ammo' ? '#ffd866' : l.type === 'armor' ? '#7ec1ff' : '#d7d6ff', 1.5);
           loot.splice(i, 1);
           continue;
-        }
-
-        if (l.x < -60 || l.x > canvas.width + 60 || l.y < -60 || l.y > canvas.height + 60) {
-          loot.splice(i, 1);
         }
       }
     }
@@ -752,8 +793,52 @@
       }
     }
 
+    function updateCamera() {
+      camera.x = clamp(player.x - canvas.width / 2, 0, world.w - canvas.width);
+      camera.y = clamp(player.y - canvas.height / 2, 0, world.h - canvas.height);
+    }
+
+    function checkExtraction() {
+      if (collected >= config.objectiveTarget && dist(player, extractionZone) < player.r + extractionZone.r) {
+        if (!missionCleared) {
+          missionCleared = true;
+          moveBagToSafe();
+          gameState = 'menu';
+          startPanel.classList.remove('hidden');
+          const box = startPanel.querySelector('.panel-box');
+          box.innerHTML = `
+            <h1 class="title" style="color: var(--green);">撤离成功</h1>
+            <p class="subtitle">
+              任务完成。你已从战区撤离。<br>
+              物资已存入安全仓库：<strong style="color: var(--gold);">${safeStorage.length}</strong><br>
+              当前分数：<strong style="color: var(--blue);">${Math.floor(score)}</strong>
+            </p>
+            <div class="buttonRow">
+              <button id="nextRunBtn">开始下一轮</button>
+              <button id="warehouseBtn" class="secondary">查看仓库</button>
+            </div>
+            <div class="miniLinks">
+              <a href="warehouse.html">安全仓库</a>
+              <a href="project-delta-rng.html">RNG 市场</a>
+              <a href="project-delta-armory.html">武器台</a>
+            </div>
+            <div class="hint">战场结束后，背包物资将进入仓库。下一次任务会从空背包开始。</div>
+          `;
+
+          document.getElementById('nextRunBtn').addEventListener('click', () => {
+            startPanel.classList.add('hidden');
+            startGame();
+          });
+
+          document.getElementById('warehouseBtn').addEventListener('click', () => {
+            window.location.href = 'warehouse.html';
+          });
+        }
+      }
+    }
+
     function update(dt) {
-      if (gameState !== "playing") return;
+      if (gameState !== 'playing') return;
 
       elapsed = performance.now() - startTimestamp;
       score += dt * 10;
@@ -762,151 +847,102 @@
       updatePlayer(dt);
       updateBullets(dt);
       updateEnemies(dt);
+      updateSupplyPoints();
       updateLoot(dt);
       updateParticles(dt);
       updateMuzzleFlashes(dt);
+      updateCamera();
+      updateMissionInfo();
 
-      if ((Math.random() < 0.022 + Math.min(0.028, elapsed / 50000))) {
+      if (Math.random() < 0.015 + Math.min(0.025, elapsed / 50000)) {
         spawnEnemy();
       }
 
-      if (Math.random() < 0.01) {
-        const x = rand(80, canvas.width - 80);
-        const y = rand(80, canvas.height - 80);
-        spawnLoot(x, y);
+      if (Math.random() < 0.012) {
+        const x = rand(120, world.w - 120);
+        const y = rand(120, world.h - 120);
+        if (dist({ x, y }, player) > 420) {
+          spawnLoot(x, y, ['medkit', 'ammo', 'armor', 'gun'][Math.floor(Math.random() * 4)]);
+        }
       }
 
+      checkExtraction();
       updateHud();
       updateMissionStatus();
     }
 
-    function drawBackground() {
+    function drawWorld() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       const grd = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      grd.addColorStop(0, "#0b1219");
-      grd.addColorStop(1, "#101b27");
+      grd.addColorStop(0, '#091720');
+      grd.addColorStop(1, '#0c1d2b');
       ctx.fillStyle = grd;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      ctx.strokeStyle = "rgba(148, 178, 205, 0.06)";
-      for (let x = 0; x < canvas.width; x += 50) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-      }
-      for (let y = 0; y < canvas.height; y += 50) {
-        ctx.beginPath();
-        ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-      }
-
-      ctx.fillStyle = "rgba(120, 152, 132, 0.05)";
-      for (let i = 0; i < 28; i++) {
-        const x = ((i * 115) + (elapsed * 0.04)) % (canvas.width + 120) - 60;
-        const y = (i * 71) % canvas.height;
-        ctx.fillRect(x, y, 72, 26);
-      }
-    }
-
-    function drawPlayer() {
       ctx.save();
-      ctx.translate(player.x, player.y);
-      ctx.rotate(player.angle);
+      ctx.translate(-camera.x, -camera.y);
 
-      ctx.fillStyle = "rgba(0,0,0,0.28)";
-      ctx.beginPath();
-      ctx.ellipse(0, player.r + 18, 20, 10, 0, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fillStyle = '#0b1a24';
+      ctx.fillRect(0, 0, world.w, world.h);
 
-      ctx.fillStyle = "#dfe8f5";
-      ctx.fillRect(8, -2, 22, 4);
-
-      ctx.fillStyle = "#66e2a7";
-      ctx.beginPath();
-      ctx.arc(0, 0, player.r, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = "#ebf9ff";
-      ctx.beginPath();
-      ctx.arc(0, -7, 9, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = "#1d3b52";
-      ctx.fillRect(-6, -10, 12, 7);
-
-      if (player.weaponLevel > 1) {
-        ctx.strokeStyle = "#ffd866";
-        ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(121,216,255,0.08)';
+      for (let x = 0; x <= world.w; x += 80) {
         ctx.beginPath();
-        ctx.arc(0, 0, player.r + 6, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.moveTo(x, 0); ctx.lineTo(x, world.h); ctx.stroke();
+      }
+      for (let y = 0; y <= world.h; y += 80) {
+        ctx.beginPath();
+        ctx.moveTo(0, y); ctx.lineTo(world.w, y); ctx.stroke();
       }
 
-      ctx.restore();
-    }
+      ctx.fillStyle = 'rgba(122, 199, 255, 0.06)';
+      ctx.fillRect(0, 0, world.w, world.h);
 
-    function drawBullets() {
-      bullets.forEach((b) => {
-        ctx.fillStyle = b.color;
+      ctx.fillStyle = 'rgba(92, 210, 168, 0.15)';
+      ctx.fillRect(0, 0, 480, 460);
+      ctx.fillStyle = 'rgba(255, 214, 108, 0.08)';
+      ctx.fillRect(600, 800, 500, 260);
+      ctx.fillStyle = 'rgba(120, 140, 255, 0.12)';
+      ctx.fillRect(1200, 700, 500, 400);
+
+      ctx.fillStyle = '#6de3b3';
+      ctx.beginPath();
+      ctx.arc(extractionZone.x, extractionZone.y, extractionZone.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#d5fef1';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      supplyPoints.forEach((s) => {
+        ctx.fillStyle = s.color;
         ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.arc(s.x, s.y, 16, 0, Math.PI * 2);
         ctx.fill();
       });
-    }
 
-    function drawEnemies() {
-      enemies.forEach((e) => {
-        ctx.save();
-        ctx.translate(e.x, e.y);
-
-        ctx.fillStyle = "rgba(0,0,0,0.26)";
-        ctx.beginPath();
-        ctx.ellipse(0, e.r + 10, e.r + 9, 8, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = e.color;
-        ctx.beginPath();
-        ctx.arc(0, 0, e.r, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = "#f9efe5";
-        ctx.beginPath();
-        ctx.arc(0, -3, e.r * 0.38, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = "rgba(15, 8, 9, 0.7)";
-        ctx.fillRect(-e.r, -e.r - 13, e.r * 2, 4);
-
-        const healthRatio = clamp((e.hp / (1 + Math.floor(elapsed / 18000) + 1)), 0, 1);
-        ctx.fillStyle = "#83ffbe";
-        ctx.fillRect(-e.r, -e.r - 13, e.r * 2 * healthRatio, 4);
-
-        ctx.restore();
-      });
-    }
-
-    function drawLoot() {
       loot.forEach((l) => {
         const pulse = 1 + Math.sin(l.pulse * 0.12) * 0.18;
         ctx.save();
         ctx.translate(l.x, l.y);
         ctx.scale(pulse, pulse);
 
-        if (l.type === "medkit") {
-          ctx.fillStyle = "#7efeb0";
+        if (l.type === 'medkit') {
+          ctx.fillStyle = '#7efeb0';
           ctx.fillRect(-9, -9, 18, 18);
-          ctx.strokeStyle = "#e6fff2";
+          ctx.strokeStyle = '#e6fff2';
           ctx.lineWidth = 2;
           ctx.beginPath();
           ctx.moveTo(0, -7); ctx.lineTo(0, 7);
           ctx.moveTo(-7, 0); ctx.lineTo(7, 0);
           ctx.stroke();
-        } else if (l.type === "ammo") {
-          ctx.fillStyle = "#ffd866";
+        } else if (l.type === 'ammo') {
+          ctx.fillStyle = '#ffd866';
           ctx.fillRect(-10, -7, 20, 14);
-          ctx.strokeStyle = "#fff4b3";
+          ctx.strokeStyle = '#fff4b3';
           ctx.strokeRect(-10, -7, 20, 14);
-        } else if (l.type === "armor") {
-          ctx.fillStyle = "#7ec1ff";
+        } else if (l.type === 'armor') {
+          ctx.fillStyle = '#7ec1ff';
           ctx.beginPath();
           ctx.moveTo(0, -12);
           ctx.lineTo(10, -7);
@@ -917,26 +953,51 @@
           ctx.closePath();
           ctx.fill();
         } else {
-          ctx.fillStyle = "#d7d6ff";
+          ctx.fillStyle = '#d7d6ff';
           ctx.fillRect(-11, -11, 22, 22);
-          ctx.fillStyle = "#5f67ff";
+          ctx.fillStyle = '#5f67ff';
           ctx.fillRect(-6, -6, 12, 12);
         }
-
         ctx.restore();
       });
-    }
 
-    function drawParticles() {
+      enemies.forEach((e) => {
+        ctx.save();
+        ctx.translate(e.x, e.y);
+        ctx.fillStyle = 'rgba(0,0,0,0.26)';
+        ctx.beginPath();
+        ctx.ellipse(0, e.r + 10, e.r + 9, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = e.color;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#f9efe5';
+        ctx.beginPath();
+        ctx.arc(0, -3, e.r * 0.38, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+
+      ctx.fillStyle = '#7ce6b6';
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.save();
+      ctx.translate(player.x, player.y);
+      ctx.rotate(player.angle);
+      ctx.fillStyle = '#dfe8f5';
+      ctx.fillRect(8, -2, 22, 4);
+      ctx.restore();
+
       particles.forEach((p) => {
         ctx.globalAlpha = Math.max(0, p.life / 60);
         ctx.fillStyle = p.color;
         ctx.fillRect(p.x, p.y, 3, 3);
         ctx.globalAlpha = 1;
       });
-    }
 
-    function drawMuzzleFlashes() {
       muzzleFlashes.forEach((f) => {
         ctx.save();
         ctx.translate(f.x, f.y);
@@ -945,20 +1006,27 @@
         ctx.fillRect(0, -2, f.len, 4);
         ctx.restore();
       });
+
+      ctx.restore();
+
+      drawCrosshair();
+      drawBars();
     }
 
     function drawCrosshair() {
+      const x = mouse.x;
+      const y = mouse.y;
       ctx.save();
-      ctx.strokeStyle = "rgba(255,255,255,0.8)";
+      ctx.strokeStyle = 'rgba(255,255,255,0.8)';
       ctx.lineWidth = 1.2;
       ctx.beginPath();
-      ctx.arc(mouse.x, mouse.y, 12, 0, Math.PI * 2);
+      ctx.arc(x, y, 12, 0, Math.PI * 2);
       ctx.stroke();
       ctx.beginPath();
-      ctx.moveTo(mouse.x - 16, mouse.y); ctx.lineTo(mouse.x - 6, mouse.y);
-      ctx.moveTo(mouse.x + 6, mouse.y); ctx.lineTo(mouse.x + 16, mouse.y);
-      ctx.moveTo(mouse.x, mouse.y - 16); ctx.lineTo(mouse.x, mouse.y - 6);
-      ctx.moveTo(mouse.x, mouse.y + 6); ctx.lineTo(mouse.x, mouse.y + 16);
+      ctx.moveTo(x - 16, y); ctx.lineTo(x - 6, y);
+      ctx.moveTo(x + 6, y); ctx.lineTo(x + 16, y);
+      ctx.moveTo(x, y - 16); ctx.lineTo(x, y - 6);
+      ctx.moveTo(x, y + 6); ctx.lineTo(x, y + 16);
       ctx.stroke();
       ctx.restore();
     }
@@ -969,123 +1037,80 @@
       const w = 180;
       const h = 12;
 
-      ctx.fillStyle = "rgba(0,0,0,0.3)";
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
       ctx.fillRect(x, y, w, h);
-
       const hpRatio = clamp(player.hp / player.maxHp, 0, 1);
-      ctx.fillStyle = hpRatio > 0.5 ? "#70f7a7" : hpRatio > 0.25 ? "#ffd866" : "#ff7a7a";
+      ctx.fillStyle = hpRatio > 0.5 ? '#70f7a7' : hpRatio > 0.25 ? '#ffd866' : '#ff7a7a';
       ctx.fillRect(x, y, w * hpRatio, h);
-      ctx.strokeStyle = "rgba(255,255,255,0.25)";
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
       ctx.strokeRect(x, y, w, h);
 
       const armorW = 120;
       const armorX = canvas.width - 140;
-      ctx.fillStyle = "rgba(0,0,0,0.3)";
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
       ctx.fillRect(armorX, y, armorW, h);
-      ctx.fillStyle = "#7ec1ff";
+      ctx.fillStyle = '#7ec1ff';
       ctx.fillRect(armorX, y, armorW * clamp(player.armor / 100, 0, 1), h);
-      ctx.strokeStyle = "rgba(255,255,255,0.25)";
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
       ctx.strokeRect(armorX, y, armorW, h);
-    }
-
-    function render() {
-      drawBackground();
-      drawLoot();
-      drawBullets();
-      drawEnemies();
-      drawMuzzleFlashes();
-      drawPlayer();
-      drawParticles();
-      drawCrosshair();
-      drawBars();
     }
 
     function gameLoop(ts) {
       if (!lastTs) lastTs = ts;
       const dt = Math.min((ts - lastTs) / 1000, 0.032);
       lastTs = ts;
-
       update(dt);
-      render();
+      drawWorld();
 
-      if (gameState === "playing") {
+      if (gameState === 'playing') {
         loopId = requestAnimationFrame(gameLoop);
       }
     }
 
     function extractRun() {
-      if (gameState !== "playing") {
-        if (!missionBag.length) {
-          window.location.href = 'warehouse.html';
-          return;
-        }
-      }
-      if (!missionBag.length) {
+      if (gameState !== 'playing') {
         window.location.href = 'warehouse.html';
         return;
       }
-      moveBagToSafe();
-      gameState = "menu";
-      startPanel.classList.remove("hidden");
-      const box = startPanel.querySelector(".panel-box");
-      box.innerHTML = `
-        <h1 class="title" style="color: var(--green);">撤离成功</h1>
-        <p class="subtitle">
-          任务完成，背包中的物资已安全存入仓库。<br>
-          当前仓库数量：<strong style="color: var(--gold);">${safeStorage.length}</strong>
-        </p>
-        <div class="buttonRow">
-          <button id="nextRunBtn">开始下一轮</button>
-          <button id="warehouseBtn" class="secondary">查看仓库</button>
-        </div>
-        <div class="miniLinks">
-          <a href="warehouse.html">安全仓库</a>
-          <a href="project-delta-rng.html">RNG 市场</a>
-          <a href="project-delta-armory.html">武器台</a>
-        </div>
-        <div class="hint">你可以在仓库中查看永久保存的物资。</div>
-      `;
-      document.getElementById("nextRunBtn").addEventListener("click", () => {
-        startPanel.classList.add("hidden");
-        startGame();
-      });
-      document.getElementById("warehouseBtn").addEventListener("click", () => {
-        window.location.href = "warehouse.html";
-      });
+      if (collected >= config.objectiveTarget) {
+        checkExtraction();
+      } else {
+        missionInfoEl.textContent = '目标：还差 ' + (config.objectiveTarget - collected) + ' 个物资，再继续搜集。';
+      }
     }
 
-    window.addEventListener("keydown", (e) => {
+    window.addEventListener('keydown', (e) => {
       keys[e.key] = true;
-      if (e.key === " ") e.preventDefault();
+      if (e.key === ' ') e.preventDefault();
     });
 
-    window.addEventListener("keyup", (e) => {
+    window.addEventListener('keyup', (e) => {
       keys[e.key] = false;
     });
 
-    canvas.addEventListener("mousemove", (e) => {
+    canvas.addEventListener('mousemove', (e) => {
       const rect = canvas.getBoundingClientRect();
       mouse.x = ((e.clientX - rect.left) / rect.width) * canvas.width;
       mouse.y = ((e.clientY - rect.top) / rect.height) * canvas.height;
     });
 
-    canvas.addEventListener("mousedown", (e) => {
+    canvas.addEventListener('mousedown', (e) => {
       if (e.button === 0) mouse.down = true;
     });
 
-    canvas.addEventListener("mouseup", () => mouse.down = false);
-    canvas.addEventListener("mouseleave", () => mouse.down = false);
+    canvas.addEventListener('mouseup', () => mouse.down = false);
+    canvas.addEventListener('mouseleave', () => mouse.down = false);
 
-    window.addEventListener("blur", () => {
+    window.addEventListener('blur', () => {
       Object.keys(keys).forEach((k) => keys[k] = false);
       mouse.down = false;
     });
 
-    startBtn.addEventListener("click", startGame);
-    extractBtn.addEventListener("click", extractRun);
+    startBtn.addEventListener('click', startGame);
+    extractBtn.addEventListener('click', extractRun);
     updateMissionStatus();
     resetGame();
-    render();
+    drawWorld();
   </script>
 </body>
 </html>
