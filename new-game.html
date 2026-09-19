@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Project Delta：新游戏</title>
+<style>
+:root{--bg:#071018;--panel:#0d1d29;--line:#35627c;--text:#edf7ff;--muted:#9eb9c8;--blue:#79d8ff;--green:#7cf2b1;--gold:#ffd568;--red:#ff7979}*{box-sizing:border-box}body{margin:0;min-height:100vh;padding:18px;background:radial-gradient(circle at top,#20495b,#071018 52%,#03070b);color:var(--text);font-family:Arial,"Microsoft YaHei",sans-serif}.app{width:min(1000px,100%);margin:auto}.top{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap}.top h1{margin:0;color:var(--green);letter-spacing:2px;font-size:clamp(25px,4vw,42px)}.top p{margin:6px 0;color:var(--muted)}a{color:var(--blue);border:1px solid #79d8ff66;border-radius:9px;padding:9px 12px;text-decoration:none}.panel{margin-top:16px;padding:18px;border:1px solid var(--line);border-radius:15px;background:rgba(13,29,41,.92)}.hero{text-align:center}.hero h2{color:var(--gold);margin:0 0 8px}.hero p{color:var(--muted);line-height:1.7}.actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:15px}button{border:0;border-radius:9px;padding:12px 18px;background:linear-gradient(#a8eaff,#51bfff);font-weight:bold;cursor:pointer;color:#061018}button.danger{background:linear-gradient(#ffaaa5,#ff6868);color:#250708}.grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}.grid h2{margin:0 0 12px;color:var(--blue);font-size:20px}.items{display:grid;gap:7px}.item{display:flex;justify-content:space-between;gap:8px;padding:10px;border-radius:8px;background:#ffffff08;border:1px solid #ffffff16}.empty{color:var(--muted);padding:20px;text-align:center}.status{text-align:center;min-height:28px;margin-top:12px;color:var(--gold)}.safe{color:var(--green)}.lost{color:var(--red)}.tip{font-size:12px;color:var(--muted);line-height:1.7;margin-top:12px}@media(max-width:650px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body><main class="app">
+<header class="top"><div><h1>PROJECT DELTA：行动大厅</h1><p>新游戏 · 背包风险 · 安全仓库</p></div><a href="index.html">返回射���游戏</a></header>
+<section class="panel hero"><h2>准备开始新的行动？</h2><p>点击“开始新游戏”建立一次新的战局。行动中拾取的物资会放入背包；成功撤离后可以存入安全仓库。若你死亡，背包内所有物品都会丢失，但安全仓库中的物品不会受到影响。</p><div class="actions"><button id="newGame">开始新游戏</button><button id="extract">模拟成功撤离</button><button class="danger" id="die">模拟死亡</button></div><div class="status" id="status">等待开始行动。</div></section>
+<div class="grid"><section class="panel"><h2>当前背包（死亡会丢失）</h2><div class="items" id="backpack"></div></section><section class="panel"><h2>安全仓库（死亡不会丢失）</h2><div class="items" id="safe"></div></section></div>
+<section class="panel"><h2>测试物资</h2><div class="actions"><button data-item="AK-12">拾取 AK-12</button><button data-item="黑色 Key Card">拾取黑色 Key Card</button><button data-item="加密硬盘">拾取加密硬盘</button><button data-item="黄金撤离凭证">拾取黄金撤离凭证</button></div><p class="tip">这些按钮用于测试背包规则。正式游戏中，拾取战利品时应调用同样的 backpack 逻辑；成功撤离会把背包移动到安全仓库。</p></section>
+</main>
+<script>
+const $=id=>document.getElementById(id);let backpack=[];let safe=JSON.parse(localStorage.getItem('projectDeltaSafe')||'[]');let active=false;
+function save(){localStorage.setItem('projectDeltaSafe',JSON.stringify(safe))}
+function renderList(id,list){$(id).innerHTML=list.length?list.map((x,i)=>`<div class="item"><span>${x}</span><small>#${i+1}</small></div>`).join(''):'<div class="empty">暂无物品</div>'}
+function render(){renderList('backpack',backpack);renderList('safe',safe)}
+function message(text,cls=''){ $('status').textContent=text;$('status').className='status '+cls }
+$('newGame').onclick=()=>{backpack=[];active=true;message('新行动开始！搜集物资并成功撤离。','safe');render()}
+$('extract').onclick=()=>{if(!active){message('请先开始新游戏。','lost');return}if(!backpack.length){message('背包为空，无法存入安全仓库。','lost');return}safe.push(...backpack);backpack=[];active=false;save();message('成功撤离！背包物资已安全存入仓库。','safe');render()}
+$('die').onclick=()=>{if(!active){message('当前没有进行中的行动。','lost');return}const lost=backpack.length;backpack=[];active=false;message(`你已死亡，丢失 ${lost} 件背包物资；安全仓库没有损失。`,'lost');render()}
+document.querySelectorAll('[data-item]').forEach(button=>button.onclick=()=>{if(!active){message('请先点击“开始新游戏”。','lost');return}backpack.push(button.dataset.item);message('已拾取 '+button.dataset.item+'，它目前只在背包中。');render()})
+render();
+</script></body></html>
