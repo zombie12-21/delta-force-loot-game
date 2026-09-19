@@ -3,90 +3,304 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>战场词汇：战术拼词</title>
+  <title>战场词汇：掠夺箱</title>
   <style>
-    :root { --bg:#08121b; --panel:rgba(10,22,32,.86); --line:#35627a; --blue:#78d4ff; --green:#78f0b1; --gold:#ffd86b; --red:#ff7b76; }
+    :root {
+      --bg:#07131d;
+      --bg2:#0d1d2a;
+      --panel:#0d1f2b;
+      --line:#3a6687;
+      --blue:#7fd5ff;
+      --green:#7ef2b2;
+      --gold:#ffd86a;
+      --red:#ff7d7d;
+      --purple:#d0c9ff;
+      --white:#edf7ff;
+    }
     * { box-sizing:border-box; }
-    body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; color:#eef8ff; font-family:"Microsoft YaHei",sans-serif; background:radial-gradient(circle at top,#1c4050 0,#08121b 48%,#050b10 100%); }
-    .wrap { width:min(94vw,900px); padding:24px; border:1px solid var(--line); border-radius:20px; background:var(--panel); box-shadow:0 25px 70px #0008; }
-    header { display:flex; justify-content:space-between; gap:15px; align-items:center; border-bottom:1px solid #ffffff18; padding-bottom:18px; }
-    h1 { margin:0; color:var(--green); letter-spacing:2px; font-size:clamp(25px,5vw,42px); }
-    .back { color:var(--blue); text-decoration:none; border:1px solid #78d4ff66; padding:9px 13px; border-radius:9px; }
-    .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:20px 0; }
-    .stat { padding:12px; text-align:center; border:1px solid #ffffff18; border-radius:10px; background:#ffffff08; }
-    .stat b { display:block; margin-top:4px; color:var(--gold); font-size:22px; }
-    .mission { color:#b9d5e3; line-height:1.7; margin:0 0 16px; }
-    .card { padding:25px; border:1px solid #78d4ff55; border-radius:16px; background:linear-gradient(135deg,#173342aa,#0b1923aa); text-align:center; }
-    .category { color:var(--blue); font-size:14px; letter-spacing:1px; }
-    .letters { display:flex; justify-content:center; flex-wrap:wrap; gap:10px; margin:22px auto; max-width:650px; }
-    .letter { width:54px; height:54px; border:1px solid #78d4ff66; border-radius:10px; display:grid; place-items:center; font-size:27px; font-weight:bold; color:#fff; background:#0b202d; }
-    .word { min-height:35px; color:var(--gold); font-size:27px; letter-spacing:5px; }
-    input { width:min(100%,470px); padding:15px; border-radius:11px; border:1px solid #78d4ff66; outline:none; background:#061018; color:white; font-size:19px; text-align:center; }
-    input:focus { border-color:var(--green); box-shadow:0 0 0 3px #78f0b133; }
-    button { margin-top:12px; padding:12px 22px; border:0; border-radius:10px; font-weight:bold; font-size:16px; cursor:pointer; background:linear-gradient(#a8e8ff,#50bfff); color:#041018; }
-    button.secondary { margin-left:8px; background:#ffffff14; color:#dceffc; border:1px solid #ffffff2b; }
-    #message { min-height:28px; margin-top:16px; font-weight:bold; }
-    .good { color:var(--green); } .bad { color:var(--red); }
-    .progress { height:10px; margin-top:18px; overflow:hidden; border-radius:20px; background:#ffffff15; }
-    #progressBar { height:100%; width:100%; background:linear-gradient(90deg,var(--green),var(--blue)); transition:width .2s; }
-    .help { margin-top:20px; color:#a8c0ce; font-size:13px; line-height:1.7; }
-    @media(max-width:600px) { .wrap{padding:16px}.stats{grid-template-columns:repeat(2,1fr)} header{align-items:flex-start;flex-direction:column}.letter{width:43px;height:43px;font-size:21px} }
+    html, body { margin:0; min-height:100vh; } 
+    body {
+      display:flex; align-items:center; justify-content:center;
+      font-family:"Microsoft YaHei",sans-serif;
+      background:radial-gradient(circle at top,#20475a 0%,#08131c 40%,#040a10 100%);
+      color:var(--white);
+      padding:18px;
+    }
+    .game {
+      width:min(95vw, 980px);
+      background:rgba(12,22,31,.9);
+      border:1px solid var(--line);
+      border-radius:22px;
+      box-shadow:0 28px 70px rgba(0,0,0,.45);
+      padding:22px;
+    }
+    header {
+      display:flex; justify-content:space-between; align-items:center; gap:12px; padding-bottom:16px; border-bottom:1px solid #ffffff12;
+    }
+    h1 {
+      margin:0; color:var(--green); letter-spacing:2px; font-size:clamp(26px,4vw,42px);
+    }
+    .nav {
+      text-decoration:none; color:var(--blue); border:1px solid #7fd5ff88; border-radius:10px; padding:9px 12px; font-weight:700;
+    }
+    .topbar {
+      display:grid; grid-template-columns:repeat(4, minmax(120px, 1fr)); gap:12px; margin:20px 0;
+    }
+    .stat {
+      background:#ffffff09; border:1px solid #ffffff18; border-radius:12px; text-align:center; padding:14px 10px;
+    }
+    .stat small { display:block; color:#c7dcea; }
+    .stat strong { display:block; margin-top:6px; font-size:26px; color:var(--gold); }
+    .mission {
+      background:linear-gradient(135deg,#102a3a,#0d1d2a); border:1px solid #7fd5ff55; border-radius:16px; padding:18px 20px; margin-bottom:18px;
+    }
+    .mission p { margin:0; line-height:1.7; color:#d5ebf9; }
+    .crate-wrap {
+      display:grid; grid-template-columns:repeat(3, minmax(180px, 1fr)); gap:16px; margin:18px 0 16px;
+    }
+    .crate {
+      min-height:220px; border-radius:18px; padding:18px 14px; border:1px solid #8cc8e9aa; background:linear-gradient(180deg,#11314a,#102635);
+      position:relative; overflow:hidden; text-align:center;
+    }
+    .crate::before {
+      content:""; position:absolute; inset:0; background:linear-gradient(140deg,#ffffff08,#ffffff00 30%,#ffffff08 100%);
+    }
+    .crate .label { position:relative; z-index:1; font-size:12px; letter-spacing:2px; color:var(--blue); }
+    .crate .letters {
+      position:relative; z-index:1; display:flex; justify-content:center; flex-wrap:wrap; gap:8px; margin:20px auto 10px; min-height:64px;
+    }
+    .crate .letter {
+      width:32px; height:32px; border-radius:8px; background:#071922; border:1px solid #7fd5ff66; display:grid; place-items:center; font-weight:900; color:#effaff;
+    }
+    .crate .status {
+      position:relative; z-index:1; display:inline-block; margin-top:12px; padding:6px 10px; border-radius:999px; font-size:12px; border:1px solid #ffffff18; background:#ffffff08; color:#dfeff7;
+    }
+    .active { border-color:var(--green); box-shadow:0 0 0 2px rgba(126,242,178,.15); }
+    .opened { border-color:var(--gold); background:linear-gradient(180deg,#314524,#182d17); }
+    .opened .status { background:#ffd96a22; color:var(--gold); border-color:#ffd96a66; }
+    .play {
+      display:grid; grid-template-columns:1fr auto auto; gap:10px; align-items:center; margin-top:6px;
+    }
+    input {
+      width:100%; padding:16px 18px; border-radius:12px; border:1px solid #7fd5ff66; background:#061018; color:#f6fbff; font-size:18px; text-align:center; outline:none;
+    }
+    input:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(126,242,178,.14); }
+    button {
+      border:0; border-radius:12px; padding:16px 18px; font-weight:800; cursor:pointer; color:#041018; background:linear-gradient(180deg,#a9eaff,#55beff);
+      box-shadow:0 12px 20px rgba(85,190,255,.24); font-size:16px;
+    }
+    button.secondary {
+      background:rgba(255,255,255,.08); color:#e7f5ff; border:1px solid #ffffff18; box-shadow:none;
+    }
+    #message {
+      min-height:32px; margin-top:16px; font-weight:700; font-size:16px; text-align:center;
+    }
+    .good { color:var(--green); }
+    .bad { color:var(--red); }
+    .hint {
+      margin-top:18px; color:#c3d7e4; text-align:center; font-size:13px; line-height:1.8;
+    }
+    @media(max-width:760px){
+      .crate-wrap { grid-template-columns:1fr; }
+      .topbar{ grid-template-columns:repeat(2,1fr); }
+      .play { grid-template-columns:1fr; }
+      header { flex-direction:column; align-items:flex-start; }
+    }
   </style>
 </head>
 <body>
-  <main class="wrap">
-    <header><h1>战场词汇：战术拼词</h1><a class="back" href="index.html">返回射击游戏</a></header>
-    <p class="mission">从字母中拼出正确的英文战术词汇。答对可以获得情报分，连续答对会有连击奖励；倒计时结束前完成任务！</p>
-    <section class="stats">
-      <div class="stat">情报分<b id="score">0</b></div><div class="stat">任务<b id="round">1/10</b></div><div class="stat">连击<b id="streak">0</b></div><div class="stat">时间<b id="time">20</b></div>
-    </section>
-    <section class="card">
-      <div class="category" id="category">任务目标</div>
-      <div class="letters" id="letters"></div>
-      <div class="word" id="word">请输入答案</div>
-      <input id="answer" autocomplete="off" spellcheck="false" placeholder="输入英文单词" />
-      <br />
-      <button id="submit">提交答案</button><button class="secondary" id="hint">显示提示</button>
-      <div id="message"></div>
-      <div class="progress"><div id="progressBar"></div></div>
-    </section>
-    <div class="help">操作：输入英文单词后按 Enter。每局 10 个词。词库包括 soldier、armor、ammo、medic、extract、scout、sniper、rifle、supply、mission 等战术词汇。</div>
-  </main>
+  <div class="game">
+    <header>
+      <h1>战场词汇：掠夺箱</h1>
+      <a class="nav" href="index.html">返回射击游戏</a>
+    </header>
+
+    <div class="topbar">
+      <div class="stat"><small>情报分</small><strong id="score">0</strong></div>
+      <div class="stat"><small>箱子</small><strong id="crateCount">0</strong></div>
+      <div class="stat"><small>连击</small><strong id="streak">0</strong></div>
+      <div class="stat"><small>时间</small><strong id="time">30</strong></div>
+    </div>
+
+    <div class="mission">
+      <p>目标：在倒计时内，破解每个掠夺箱中的战术英文单词。正确答案会打开箱子，获得补给和积分。错误会消耗时间与连击。</p>
+    </div>
+
+    <div class="crate-wrap" id="crateWrap"></div>
+
+    <div class="play">
+      <input id="answer" autocomplete="off" spellcheck="false" placeholder="输入正确英文单词" />
+      <button id="submit">打开箱子</button>
+      <button class="secondary" id="hint">提示</button>
+    </div>
+
+    <div id="message"></div>
+    <div class="hint">提示：词库包括 AMMO、RIFLE、MEDIC、ARMOR、LOOT、MISSION、RESCUE、TARGET、SNIPER、SUPPLY 等战术单词。</div>
+  </div>
+
   <script>
     const words = [
-      ["SOLDIER","士兵"],["ARMOR","装甲"],["AMMO","弹药"],["MEDIC","医疗兵"],["EXTRACT","撤离"],
-      ["SCOUT","侦察兵"],["SNIPER","狙击手"],["RIFLE","步枪"],["SUPPLY","补给"],["MISSION","任务"],
-      ["SQUAD","小队"],["RADIO","无线电"],["TACTIC","战术"],["TARGET","目标"],["LOOT","战利品"],
-      ["HELMET","头盔"],["BUNKER","碉堡"],["DRONE","无人机"],["PATROL","巡逻"],["RESCUE","救援"]
+      ["AMMO","弹药"], ["RIFLE","步枪"], ["MEDIC","医疗兵"], ["ARMOR","装甲"], ["LOOT","掠夺"],
+      ["TARGET","目标"], ["RESCUE","救援"], ["SNIPER","狙击手"], ["SUPPLY","补给"], ["MISSION","任务"],
+      ["DRONE","无人机"], ["SCOUT","侦察"], ["TACTIC","战术"], ["BUNKER","碉堡"], ["HELMET","头盔"],
+      ["RADIO","电台"], ["SQUAD","小队"], ["SECURE","安全"], ["EXTRACT","撤离"], ["ALERT","警戒"]
     ];
-    const $ = id => document.getElementById(id);
-    let current, round=1, score=0, streak=0, time=20, timer, used=[];
-    function shuffle(a){ return [...a].sort(()=>Math.random()-.5); }
-    function newWord(){
-      if(round>10){ finish(); return; }
-      let available=words.filter((_,i)=>!used.includes(i));
-      if(!available.length) { used=[]; available=words; }
-      const pick=available[Math.floor(Math.random()*available.length)];
-      current=pick; used.push(words.indexOf(pick));
-      $("category").textContent=`战术词汇 · ${pick[1]}`;
-      $("letters").innerHTML=shuffle(pick[0].split("")).map(x=>`<span class="letter">${x}</span>`).join("");
-      $("word").textContent="请输入答案"; $("answer").value=""; $("answer").focus();
-      $("round").textContent=`${round}/10`; time=20; update(); clearInterval(timer); timer=setInterval(tick,1000);
+
+    const $ = (id) => document.getElementById(id);
+    const scoreEl = $("score");
+    const crateCountEl = $("crateCount");
+    const streakEl = $("streak");
+    const timeEl = $("time");
+    const crateWrap = $("crateWrap");
+    const answerInput = $("answer");
+    const messageEl = $("message");
+
+    let score = 0;
+    let streak = 0;
+    let timeLeft = 30;
+    let timer = null;
+    let opened = 0;
+    let currentWords = [];
+    let activeIndex = 0;
+    let currentTarget = null;
+
+    function shuffle(array) {
+      return array.slice().sort(() => Math.random() - 0.5);
     }
-    function update(){ $("score").textContent=score; $("streak").textContent=streak; $("time").textContent=time; $("progressBar").style.width=(time/20*100)+"%"; }
-    function tick(){ time--; update(); if(time<=0){ clearInterval(timer); answer(false,"时间到！答案是 "+current[0]); } }
-    function answer(correct,message){
-      clearInterval(timer); const m=$("message"); m.textContent=message; m.className=correct?"good":"bad";
-      if(correct){ score+=100+streak*25; streak++; } else streak=0;
-      update();
-      setTimeout(()=>{ round++; newWord(); },900);
+
+    function renderCrates() {
+      crateWrap.innerHTML = "";
+      currentWords.forEach((item, idx) => {
+        const div = document.createElement("div");
+        div.className = "crate" + (idx === activeIndex ? " active" : "") + (item.opened ? " opened" : "");
+        div.innerHTML = `
+          <div class="label">${item.type}</div>
+          <div class="letters">${shuffle(item.word.split("")).map(c => `<span class="letter">${c}</span>`).join("")}</div>
+          <div class="status">${item.opened ? "已开箱" : "待解锁"}</div>
+        `;
+        div.addEventListener("click", () => { activeIndex = idx; answerInput.focus(); updateActive(); });
+        crateWrap.appendChild(div);
+      });
     }
-    function submit(){ if(!current)return; const value=$("answer").value.trim().toUpperCase(); if(!value)return; if(value===current[0]) answer(true,"命中！获得情报分。"); else answer(false,"答案错误，正确答案是 "+current[0]); }
-    function finish(){ clearInterval(timer); $("category").textContent="任务完成"; $("letters").innerHTML="🏆"; $("word").textContent=`最终情报分：${score}`; $("message").textContent="优秀，行动小队成功撤离！"; $("message").className="good"; $("answer").style.display="none"; $("submit").textContent="再来一局"; $("submit").onclick=()=>location.reload(); $("hint").style.display="none"; }
-    $("submit").onclick=submit;
-    $("hint").onclick=()=>{ if(current){ $("word").textContent=`提示：${current[1]}（${current[0][0]}开头）`; score=Math.max(0,score-10); update(); } };
-    $("answer").addEventListener("keydown",e=>{if(e.key==="Enter")submit()});
-    newWord();
+
+    function updateActive() {
+      const crates = document.querySelectorAll(".crate");
+      crates.forEach((node, idx) => node.classList.toggle("active", idx === activeIndex));
+    }
+
+    function refreshStats() {
+      scoreEl.textContent = score;
+      crateCountEl.textContent = opened;
+      streakEl.textContent = streak;
+      timeEl.textContent = timeLeft;
+    }
+
+    function createRound() {
+      const pool = shuffle(words.slice());
+      const items = [];
+      for (let i = 0; i < 3; i++) {
+        const [word, meaning] = pool[i];
+        items.push({
+          word,
+          meaning,
+          type: i === 0 ? "军械箱" : i === 1 ? "医疗箱" : "补给箱",
+          opened: false
+        });
+      }
+      currentWords = items;
+      activeIndex = 0;
+      currentTarget = currentWords[0];
+      answerInput.value = "";
+      answerInput.placeholder = `输入 ${currentTarget.type} 对应英文单词`;
+      renderCrates();
+      refreshStats();
+      messageEl.textContent = "选择一个箱子并输入答案。";
+      messageEl.className = "";
+      answerInput.focus();
+    }
+
+    function tick() {
+      timeLeft -= 1;
+      refreshStats();
+      if (timeLeft <= 0) {
+        clearInterval(timer);
+        messageEl.textContent = "时间到！本次任务结束。";
+        messageEl.className = "bad";
+        $("submit").textContent = "再来一局";
+        $("submit").onclick = () => location.reload();
+        $("hint").disabled = true;
+        answerInput.disabled = true;
+      }
+    }
+
+    function startTimer() {
+      clearInterval(timer);
+      timer = setInterval(tick, 1000);
+    }
+
+    function submitAnswer() {
+      if (!currentWords.length || timeLeft <= 0) return;
+      const value = answerInput.value.trim().toUpperCase();
+      const target = currentWords[activeIndex];
+      if (!value) {
+        messageEl.textContent = "请输入答案。";
+        messageEl.className = "bad";
+        return;
+      }
+
+      if (value === target.word) {
+        target.opened = true;
+        opened += 1;
+        streak += 1;
+        score += 100 + streak * 25;
+        messageEl.textContent = `正确！已打开 ${target.type}，获得 ${target.meaning} 物资。`;
+        messageEl.className = "good";
+        answerInput.value = "";
+
+        const nextIndex = currentWords.findIndex(item => !item.opened);
+        if (nextIndex !== -1) {
+          activeIndex = nextIndex;
+          currentTarget = currentWords[nextIndex];
+          answerInput.placeholder = `输入 ${currentTarget.type} 对应英文单词`;
+        } else {
+          clearInterval(timer);
+          messageEl.textContent = `任务完成！本轮总分：${score}`;
+          messageEl.className = "good";
+          $("submit").textContent = "再来一局";
+          $("submit").onclick = () => location.reload();
+          $("hint").disabled = true;
+          answerInput.disabled = true;
+          return;
+        }
+      } else {
+        streak = 0;
+        score = Math.max(0, score - 20);
+        messageEl.textContent = `错误！正确答案是 ${target.word}，对应 ${target.meaning}。`;
+        messageEl.className = "bad";
+      }
+
+      refreshStats();
+      renderCrates();
+      answerInput.focus();
+    }
+
+    function showHint() {
+      const target = currentWords[activeIndex];
+      messageEl.textContent = `提示：${target.type} 对应词义为 ${target.meaning}，首字母 ${target.word[0]}`;
+      messageEl.className = "";
+      score = Math.max(0, score - 10);
+      refreshStats();
+    }
+
+    $("submit").addEventListener("click", submitAnswer);
+    $("hint").addEventListener("click", showHint);
+    answerInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") submitAnswer();
+    });
+
+    createRound();
+    startTimer();
+    refreshStats();
   </script>
 </body>
 </html>
