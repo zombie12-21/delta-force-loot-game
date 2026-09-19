@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Project Delta：仓库与武器台</title>
+<style>
+:root{--bg:#071018;--panel:#0d1c28;--panel2:#112838;--line:#35627c;--text:#edf7ff;--muted:#9eb9c8;--blue:#79d8ff;--green:#7cf2b1;--gold:#ffd568;--red:#ff7979;--purple:#d0b7ff}
+*{box-sizing:border-box}body{margin:0;padding:16px;background:radial-gradient(circle at top,#20495b,#071018 52%,#03070b);color:var(--text);font-family:Arial,"Microsoft YaHei",sans-serif}.app{width:min(1250px,100%);margin:auto}.top{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap}.top h1{margin:0;color:var(--green);letter-spacing:2px;font-size:clamp(25px,4vw,43px)}.top p{margin:6px 0;color:var(--muted)}a{color:var(--blue);border:1px solid #79d8ff66;border-radius:9px;padding:9px 12px;text-decoration:none}.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin:16px 0}.stat{padding:10px;text-align:center;border:1px solid #ffffff18;border-radius:10px;background:#ffffff09}.stat small{display:block;color:var(--muted)}.stat b{display:block;margin-top:4px;color:var(--gold);font-size:20px}.layout{display:grid;grid-template-columns:.95fr 1.45fr .8fr;gap:13px}.panel{padding:15px;border:1px solid var(--line);border-radius:15px;background:rgba(13,28,40,.94);min-width:0}h2{margin:0 0 12px;color:var(--blue);font-size:20px}.search{width:100%;padding:10px;border:1px solid #79d8ff66;border-radius:8px;background:#061018;color:#fff;outline:none;margin-bottom:10px}.list{display:grid;gap:8px;max-height:620px;overflow:auto}.row{padding:10px;border:1px solid #ffffff18;border-radius:9px;background:#ffffff08;cursor:pointer}.row:hover,.row.active{border-color:var(--green);box-shadow:0 0 0 2px #7cf2b122}.row b{display:block}.row small{display:block;color:var(--muted);margin-top:4px;line-height:1.45}.tag{float:right;padding:3px 6px;border-radius:5px;background:#ffffff12;color:var(--gold);font-size:10px}.missing{color:var(--red)!important}.owned{color:var(--green)!important}.workbench{background:linear-gradient(145deg,#153747,#0b1923);border:1px solid #79d8ff55;border-radius:13px;padding:16px}.weapon-name{margin:0;color:var(--gold);font-size:26px}.weapon-type{color:var(--muted);margin:5px 0 14px}.rating{display:flex;align-items:center;justify-content:space-between;padding:12px;border-radius:10px;background:#0004;margin-bottom:14px}.rating strong{font-size:31px;color:var(--gold)}.bars{display:grid;gap:8px}.barrow{display:grid;grid-template-columns:70px 1fr 35px;gap:7px;align-items:center;font-size:12px}.bar{height:9px;border-radius:8px;background:#ffffff16;overflow:hidden}.fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--green));transition:.25s}.slots{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:15px 0}.slot{min-height:52px;padding:6px;border:1px dashed #79d8ff66;border-radius:7px;text-align:center;font-size:10px;color:var(--muted)}.slot.filled{border-style:solid;border-color:var(--green);color:var(--green);background:#7cf2b116}.buttons{display:flex;gap:8px;flex-wrap:wrap}button{border:0;border-radius:8px;padding:10px 12px;background:linear-gradient(#a8eaff,#51bfff);font-weight:bold;cursor:pointer;color:#061018}button.secondary{background:#ffffff12;color:var(--text);border:1px solid #ffffff25}button:disabled{opacity:.4;cursor:not-allowed}.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px}.filters button{padding:7px 9px;font-size:11px}.material{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:9px;border:1px solid #ffffff16;border-radius:8px;background:#ffffff08;font-size:12px}.material small{display:block;color:var(--muted);margin-top:3px}.need{color:var(--red)}.have{color:var(--green)}.message{min-height:27px;margin-top:12px;text-align:center;color:var(--gold);line-height:1.5}.good{color:var(--green)}.bad{color:var(--red)}.note{font-size:12px;color:var(--muted);line-height:1.6;margin-top:13px}@media(max-width:1050px){.layout{grid-template-columns:1fr 1fr}.layout>.panel:last-child{grid-column:1/-1}.list{max-height:360px}}@media(max-width:650px){.layout{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.slots{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+<main class="app">
+<header class="top"><div><h1>PROJECT DELTA：仓库武器台</h1><p>仓库 · 物资检查 · 装备筛选 · 武器评分</p></div><div><a href="project-delta-rng.html">RNG 市场</a> <a href="weapon-workbench.html">基础改装台</a></div></header>
+<section class="stats"><div class="stat"><small>现金</small><b id="cash">12,500</b></div><div class="stat"><small>仓库物品</small><b id="itemCount">0</b></div><div class="stat"><small>可用武器</small><b id="weaponCount">0</b></div><div class="stat"><small>配件数量</small><b id="partCount">0</b></div><div class="stat"><small>仓库总价值</small><b id="warehouseValue">0</b></div></section>
+<div class="layout">
+<section class="panel"><h2>仓库武器</h2><input class="search" id="weaponSearch" placeholder="搜索武器名称..."><div class="list" id="weaponList"></div><div class="note">点击一把武器进入改装台。已安装的配件会保存到当前武器。</div></section>
+<section class="panel"><h2>武器改装台</h2><div class="workbench"><h3 class="weapon-name" id="selectedName">请选择武器</h3><div class="weapon-type" id="selectedType">从左侧仓库选择武器</div><div class="rating"><span>综合评分<br><small id="ratingText">等待选择</small></span><strong id="rating">--</strong></div><div class="bars" id="bars"></div><div class="slots" id="slots"></div><div class="buttons"><button id="equipBtn" disabled>安装选中配件</button><button class="secondary" id="removeBtn" disabled>卸下全部配件</button></div><div class="message" id="message">选择右侧配件后安装到当前武器。</div></div></section>
+<section class="panel"><h2>物资与配件</h2><div class="filters"><button class="secondary filter" data-filter="all">全部</button><button class="secondary filter" data-filter="scope">瞄准镜</button><button class="secondary filter" data-filter="barrel">枪口</button><button class="secondary filter" data-filter="grip">握把</button><button class="secondary filter" data-filter="magazine">弹匣</button></div><div class="list" id="materialList"></div><div class="note">红色“缺少”表示安装需要但仓库数量不足。获得物资后，点击“补充物资”即可测试改装。</div></section>
+</div>
+</main>
+<script>
+const weapons=[
+ {name:'AK-12',type:'突击步枪',price:4200,base:{damage:68,accuracy:52,handling:58,range:45,recoil:50}},
+ {name:'M4A1',type:'突击步枪',price:4600,base:{damage:62,accuracy:64,handling:61,range:57,recoil:54}},
+ {name:'SCAR-H',type:'战斗步枪',price:6100,base:{damage:82,accuracy:38,handling:48,range:60,recoil:35}},
+ {name:'MP5',type:'冲锋枪',price:3000,base:{damage:42,accuracy:86,handling:72,range:38,recoil:61}},
+ {name:'M870',type:'霰弹枪',price:3400,base:{damage:94,accuracy:25,handling:28,range:30,recoil:35}},
+ {name:'SVD',type:'狙击步枪',price:7200,base:{damage:88,accuracy:67,handling:30,range:82,recoil:34}},
+ {name:'AWM',type:'狙击步枪',price:11000,base:{damage:100,accuracy:80,handling:20,range:96,recoil:29}}
+];
+const parts=[
+ {name:'红点瞄准镜',type:'scope',desc:'近中距离瞄准速度',mods:{accuracy:8,handling:5},need:{'光学镜片':1}},
+ {name:'全息瞄准镜',type:'scope',desc:'快速瞄准与稳定性',mods:{accuracy:10,handling:3},need:{'光学镜片':1,'电子芯片':1}},
+ {name:'4倍战斗镜',type:'scope',desc:'提升精准与射程',mods:{accuracy:18,range:12,handling:-4},need:{'光学镜片':2,'合金片':1}},
+ {name:'热成像瞄准镜',type:'scope',desc:'特殊环境识别目标',mods:{accuracy:16,range:15},need:{'光学镜片':2,'军用电池':1}},
+ {name:'消音器',type:'barrel',desc:'降低噪音并提升精准',mods:{accuracy:4,handling:2,range:-3},need:{'钛合金':1,'机械零件':1}},
+ {name:'制退器',type:'barrel',desc:'降低垂直后坐力',mods:{recoil:12,accuracy:7},need:{'机械零件':2}},
+ {name:'重型枪管',type:'barrel',desc:'增加伤害和射程',mods:{damage:8,range:12,handling:-7},need:{'钛合金':2,'碳纤维':1}},
+ {name:'垂直握把',type:'grip',desc:'改善连续射击稳定性',mods:{recoil:10,handling:5},need:{'合金片':1,'机械零件':1}},
+ {name:'斜角握把',type:'grip',desc:'平衡操控和精准',mods:{accuracy:5,handling:9,recoil:4},need:{'合金片':1}},
+ {name:'轻量握把',type:'grip',desc:'大幅提升操控速度',mods:{handling:14,recoil:-3},need:{'碳纤维':2}},
+ {name:'扩容弹匣',type:'magazine',desc:'增加弹匣容量',mods:{capacity:15,handling:-5},need:{'弹簧组件':2,'合金片':1}},
+ {name:'快速弹匣',type:'magazine',desc:'提高换弹速度',mods:{capacity:5,handling:12},need:{'弹簧组件':1,'机械零件':1}}
+];
+let cash=12500,selectedWeapon=0,selectedPart=null,filter='all';
+let inventory={ '光学镜片':2,'电子芯片':1,'合金片':2,'机械零件':3,'钛合金':1,'碳纤维':2,'军用电池':1,'弹簧组件':2 };
+let loadouts=weapons.map(()=>[]);
+const $=id=>document.getElementById(id);
+const statKeys=[['damage','伤害'],['accuracy','精准'],['handling','操控'],['range','射程'],['recoil','稳定']];
+function current(){return weapons[selectedWeapon]}
+function formatMods(mods){return Object.entries(mods).map(([k,v])=>`${k}${v>0?'+':''}${v}`).join(' · ')}
+function renderWeaponList(){let q=$('weaponSearch').value.toLowerCase();$('weaponList').innerHTML=weapons.map((w,i)=>({w,i})).filter(x=>x.w.name.toLowerCase().includes(q)).map(({w,i})=>`<div class="row ${i===selectedWeapon?'active':''}" data-weapon="${i}"><span class="tag">${loadouts[i].length}/5 配件</span><b>${w.name}</b><small>${w.type} · 基础评分 ${baseRating(w.base)} · 价值 $${w.price.toLocaleString()}</small></div>`).join('')||'<div class="empty">没有找到武器。</div>';document.querySelectorAll('[data-weapon]').forEach(e=>e.onclick=()=>{selectedWeapon=+e.dataset.weapon;selectedPart=null;renderAll();message('已选择 '+current().name,'')})}
+function baseRating(s){return Math.round(Object.values(s).reduce((a,b)=>a+b,0)/5)}
+function calculated(){let s={...current().base,capacity:30};loadouts[selectedWeapon].forEach(p=>Object.entries(p.mods).forEach(([k,v])=>s[k]=(s[k]||0)+v));return s}
+function renderWorkbench(){let w=current(),s=calculated();$('selectedName').textContent=w.name;$('selectedType').textContent=w.type+' · 基础价值 $'+w.price.toLocaleString();let rating=Math.round((s.damage+s.accuracy+s.handling+s.range+s.recoil)/5);$('rating').textContent=rating;$('ratingText').textContent=rating>=80?'精英配置':rating>=65?'可靠配置':'基础配置';$('bars').innerHTML=statKeys.map(([key,label])=>`<div class="barrow"><span>${label}</span><div class="bar"><div class="fill" style="width:${Math.max(2,Math.min(100,s[key]))}%"></div></div><b>${Math.round(s[key])}</b></div>`).join('');$('slots').innerHTML=loadouts[selectedWeapon].map(p=>`<div class="slot filled">${p.name}<br><small>${formatMods(p.mods)}</small></div>`).concat(Array(5-loadouts[selectedWeapon].length).fill('<div class="slot">空配件槽</div>')).join('');$('equipBtn').disabled=selectedPart===null;$('removeBtn').disabled=loadouts[selectedWeapon].length===0}
+function materialText(need){return Object.entries(need).map(([name,count])=>`${name} ×${count}`).join('，')}
+function canBuild(p){return Object.entries(p.need).every(([name,count])=>(inventory[name]||0)>=count)}
+function renderMaterials(){let list=filter==='all'?parts:parts.filter(p=>p.type===filter);$('materialList').innerHTML=list.map(p=>{let index=parts.indexOf(p),owned=loadouts[selectedWeapon].some(x=>x.name===p.name),ok=canBuild(p);return `<div class="row ${selectedPart===index?'active':''}" data-part="${index}"><b>${p.name} ${owned?'✓':''}</b><small>${p.desc}<br>${formatMods(p.mods)}</small><small class="${ok?'owned':'missing'}">${owned?'已安装':ok?'材料充足':'缺少'}：${materialText(p.need)}</small></div>`}).join('');document.querySelectorAll('[data-part]').forEach(e=>e.onclick=()=>{selectedPart=+e.dataset.part;renderMaterials();renderWorkbench()})}
+function renderStats(){let count=Object.values(inventory).reduce((a,b)=>a+b,0);let weaponsValue=weapons.reduce((a,w)=>a+w.price,0);let partsValue=parts.reduce((a,p)=>a+Object.keys(p.need).length*300,0);$('cash').textContent=cash.toLocaleString();$('itemCount').textContent=count;$('weaponCount').textContent=weapons.length;$('partCount').textContent=Object.values(inventory).reduce((a,b)=>a+b,0);$('warehouseValue').textContent=(weaponsValue+partsValue).toLocaleString()}
+function renderAll(){renderWeaponList();renderWorkbench();renderMaterials();renderStats()}
+function message(text,type){$('message').textContent=text;$('message').className='message '+type}
+function equip(){if(selectedPart===null)return;let p=parts[selectedPart];if(loadouts[selectedWeapon].some(x=>x.name===p.name)){message('这个配件已经安装。','bad');return}if(loadouts[selectedWeapon].length>=5){message('配件槽已满，最多安装 5 个。','bad');return}if(!canBuild(p)){message('物资缺失：无法安装 '+p.name+'。','bad');return}Object.entries(p.need).forEach(([name,count])=>inventory[name]-=count);loadouts[selectedWeapon].push(p);message(p.name+' 安装成功，武器属性已提升。','good');renderAll()}
+function removeAll(){let count=loadouts[selectedWeapon].length;loadouts[selectedWeapon]=[];message('已卸下 '+count+' 个配件，配件返还仓库。','good');renderAll()}
+$('equipBtn').onclick=equip;$('removeBtn').onclick=removeAll;$('weaponSearch').oninput=renderWeaponList;document.querySelectorAll('.filter').forEach(b=>b.onclick=()=>{filter=b.dataset.filter;renderMaterials()});renderAll();
+</script>
+</body>
+</html>
